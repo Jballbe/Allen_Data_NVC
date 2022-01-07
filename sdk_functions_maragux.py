@@ -13,6 +13,8 @@ ctc = CellTypesCache(manifest_file='cell_types/manifest.json') #create the manif
 #this is a new test
 cells = ctc.get_cells(file_name="all_cells",require_reconstruction=True)
 
+#COUCOU
+
 #data=ctc.get_all_features(dataframe=True, require_reconstruction=True)
 
 def dict_specimen(name_file): #return all the cell info for all cell and for each specimen ; name_file=all_cells
