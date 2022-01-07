@@ -14,6 +14,7 @@ ctc = CellTypesCache(manifest_file='cell_types/manifest.json') #create the manif
 cells = ctc.get_cells(file_name="all_cells",require_reconstruction=True)
 
 #COUCOU
+#COUCOU
 
 #data=ctc.get_all_features(dataframe=True, require_reconstruction=True)
 
