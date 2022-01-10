@@ -13,9 +13,7 @@ ctc = CellTypesCache(manifest_file='cell_types/manifest.json') #create the manif
 #this is a new test
 cells = ctc.get_cells(file_name="all_cells",require_reconstruction=True)
 
-#COUCOU
-#COUCOU
-#Julien coucou
+
 #data=ctc.get_all_features(dataframe=True, require_reconstruction=True)
 
 def dict_specimen(name_file): #return all the cell info for all cell and for each specimen ; name_file=all_cells
@@ -149,7 +147,7 @@ def markers (dict_specimen) : #return in a list the structures in str followed b
     return(liste)
 
 
-def plot_marker (dict_specimen) : #within each structure of a given species, for each marker it plots an histogram of the proportion of spiny/aspiny/sparsely spiny with or without reconstruction in each layer
+def plot_marker (dict_specimen) : # within each structure of a given species, for each marker it plots an histogram of its proportion of spiny/aspiny/sparsely spiny with or without reconstruction in each layer
 
     l=markers(dict_specimen)
     for i in l :
@@ -181,43 +179,77 @@ def plot_marker (dict_specimen) : #within each structure of a given species, for
                     spa_yes = []
                     a, b, c, d, e, f = spiny_reconstruction(dict_specimen)
                     for k in layers :
-                        #print(k)
-                        ids = i[j][k]
-                        #print(a)
-                        for z in ids :
-                            if z in a :
-                                spi_no.append(z)
-                            else :
-                                if z in b :
-                                    spi_yes.append(z)
-                                else :
-                                    if z in c :
-                                        asp_no.append(z)
-                                    else :
-                                        if z in d :
-                                            asp_yes.append(z)
-                                        else :
-                                            if z in e :
-                                                spa_no.append(z)
+                        f=type(i[j][k]) is dict
+                        if f==False:
+                            ss_title=" "
+                            lab=layers
+                            #print(lab)
+                            ids = i[j][k]
+                            # print(a)
+                            for z in ids:
+                                if z in a:
+                                    spi_no.append(z)
+                                else:
+                                    if z in b:
+                                        spi_yes.append(z)
+                                    else:
+                                        if z in c:
+                                            asp_no.append(z)
+                                        else:
+                                            if z in d:
+                                                asp_yes.append(z)
                                             else:
-                                                spa_yes.append(z)
-                        len_spi_no.append(len(spi_no))
-                        len_spi_yes.append(len(spi_yes))
-                        len_asp_no.append(len(asp_no))
-                        len_asp_yes.append(len(asp_yes))
-                        len_spa_no.append(len(spa_no))
-                        len_spa_yes.append(len(spa_yes))
+                                                if z in e:
+                                                    spa_no.append(z)
+                                                else:
+                                                    spa_yes.append(z)
+                            len_spi_no.append(len(spi_no))
+                            len_spi_yes.append(len(spi_yes))
+                            len_asp_no.append(len(asp_no))
+                            len_asp_yes.append(len(asp_yes))
+                            len_spa_no.append(len(spa_no))
+                            len_spa_yes.append(len(spa_yes))
+                        else :
+                            if f==True :
+                                sub_structure=i[j][k]
+                                ss_title=", "+str(k)+", "
+                                for layer in i[j][k] :
+                                    lab=list(i[j][k].keys())
+                                    ids=i[j][k][layer]
+                                    for z in ids:
+                                        if z in a:
+                                            spi_no.append(z)
+                                        else:
+                                            if z in b:
+                                                spi_yes.append(z)
+                                            else:
+                                                if z in c:
+                                                    asp_no.append(z)
+                                                else:
+                                                    if z in d:
+                                                        asp_yes.append(z)
+                                                    else:
+                                                        if z in e:
+                                                            spa_no.append(z)
+                                                        else:
+                                                            spa_yes.append(z)
+                                    len_spi_no.append(len(spi_no))
+                                    len_spi_yes.append(len(spi_yes))
+                                    len_asp_no.append(len(asp_no))
+                                    len_asp_yes.append(len(asp_yes))
+                                    len_spa_no.append(len(spa_no))
+                                    len_spa_yes.append(len(spa_yes))
                     #fig, ax = plt.subplots()
-                    grd_titre=titre+" "+str(ss_titre)
-                    plt.bar(layers,len_spi_no,label='spiny without reconstruction')
-                    plt.bar(layers,len_spi_yes,label='spiny with reconstruction')
-                    plt.bar(layers,len_asp_no,label='aspiny without reconstruction')
-                    plt.bar(layers,len_asp_yes,label='aspiny with reconstruction')
-                    plt.bar(layers,len_spa_no,label='sparsely spiny without reconstruction')
-                    plt.bar(layers,len_spa_yes,label='sparsely spiny with reconstruction')
+                    grd_titre=titre+ss_title+str(ss_titre)
+                    plt.bar(lab,len_spi_no,label='spiny without reconstruction')
+                    plt.bar(lab,len_spi_yes,label='spiny with reconstruction')
+                    plt.bar(lab,len_asp_no,label='aspiny without reconstruction')
+                    plt.bar(lab,len_asp_yes,label='aspiny with reconstruction')
+                    plt.bar(lab,len_spa_no,label='sparsely spiny without reconstruction')
+                    plt.bar(lab,len_spa_yes,label='sparsely spiny with reconstruction')
                     plt.title(grd_titre)
                     plt.legend()
-                    #plt.show()
+                    plt.show()
 
 
 #'Retrosplenial area' : au lieu de layer ça affiche le nom de la substructure et ça met 1 sparsely pour tous les markers
