@@ -41,7 +41,7 @@ def get_cells(file_name,species,reconstruction=False, morphology=False):
 
 def dict_specimen(name_file): 
     '''
-    Generate lists of dictionnary for all specimen per species
+    Generate lists of dictionary for all specimen per species
 
     Parameters
     ----------
@@ -98,44 +98,55 @@ def take_id(name_file) :
     return (id_mouse,id_human)
 
 
-def ephys_page(specimen_id) : 
+def ephys_page(cell_id) :
     '''
-    The specimen id web page in the Allen Brain Atlas is opened
-    Take as input id from id_list from take_id function
-    '''
-    link="http://celltypes.brain-map.org/experiment/electrophysiology/"+str(specimen_id)
-    webbrowser.open(link)
-    
-def morpho_web_page(specimen_id) : 
-    '''
-    The specimen id morphology web page in the Allen Brain Atlas is opened
-    Take as input id from id_list from take_id function
-    '''
-    #the specimen id web page in the Allen Brain Atlas is opened
-    link="http://celltypes.brain-map.org/experiment/morphology/"+str(specimen_id)
-    webbrowser.open(link)
-
-
-def structure_dict (dict_specimen) : 
-    '''
-    Returns all the structures, as well as its substructures and layers, of a given specimen 
+    The electrophysiological web page of the cell id in the Allen Brain Atlas is opened
 
     Parameters
     ----------
-    dict_specimen : Dictionnary
-        dictionnary from take_id function.
+    cell_id : str
+        one str value of the id_list from take_id function
+
+    '''
+
+    link="http://celltypes.brain-map.org/experiment/electrophysiology/"+str(cell_id)
+    webbrowser.open(link)
+    
+def morpho_web_page(cell_id) :
+    '''
+    The morphological web page of the cell id in the Allen Brain Atlas is opened
+
+    Parameters
+    ----------
+    cell_id : str
+        one str value of the id_list from take_id function
+
+    '''
+
+    link="http://celltypes.brain-map.org/experiment/morphology/"+str(cell_id)
+    webbrowser.open(link)
+
+
+def structure_dict (dict_species) :
+    '''
+    Returns the cell number within each layer of all the structures of the species brain
+
+    Parameters
+    ----------
+    dict_species : Dictionary
+        dictionary from take_id function.
 
     Returns
     -------
-    dict_structure : Dictionnary
-        Dictionnary containing all the structures, as well as its substructures and layers, of a given specimen 
+    dict_structure : Dictionary
+        Dictionary containing the cell number of the layers of the structures and substructures of a given species (keys are the structures/substructures/layers and the values are the cell number)
 
     '''
     
     i=0
     dict_structure=dict()
-    while i<len(dict_specimen) : #dict_mouse
-        full_name=dict_specimen[i]['structure__name'] #full_name=dict_mouse[i]["structure__name"]
+    while i<len(dict_species) :
+        full_name=dict_species[i]['structure__name']
         j=0
         for e in full_name :
             if e=="," :
@@ -178,9 +189,25 @@ def structure_dict (dict_specimen) :
         i=i+1
     return(dict_structure)
 
-def all_cell_markers (dict_specimen) :
+
+def structures_transgenic_lines (dict_species) :
+    '''
+    Returns the cell ids of each transgenic line being in each structure/substructure/layer
+
+    Parameters
+    ----------
+    dict_species : Dictionary
+        dictionary from take_id function, can only be a dictionary containing mouse cells (no human cells since they don't have any line name)
+
+    Returns
+    -------
+    dic_type : Dictionary
+        Dictionary containing for each transgenic line being expressed in each structure/substructure/layer a list of the cell ids expressing those transgenic lines
+
+    '''
+
     dic_type=dict()
-    for i in dict_specimen :
+    for i in dict_species :
         j=0
         cre=i["line_name"]
         str_name=i["structure__name"]
@@ -250,66 +277,81 @@ def all_cell_markers (dict_specimen) :
 
     return (dic_type)
 
-def markers (dict_specimen) : #return in a list the structures in str followed by their dictionary containing for each marker the layer and its id
-    dic=all_cell_markers(dict_specimen)
-    liste=[]
+def layers_transgenic_lines (dict_species) : #return in a list the structures in str followed by their dictionary containing for each marker the layer and its id
+    '''
+    Within each structure it returns for each transgenic line all the its ids in each layer
+
+    Parameters
+    ----------
+    dict_species : Dictionary
+        dictionary from the take_id function, can only be a dictionary containing mouse cells (no human cells since they don't have any line name)
+
+    Returns
+    -------
+    lines_of_each_layer : list
+        A list of the structures names in str followed with their dictionary containing for each transgenic line the layers and its id
+
+    '''
+
+    dic=structures_transgenic_lines(dict_species)
+    lines_of_each_layer=[]
     for i in dic :
-        liste.append(i)
+        lines_of_each_layer.append(i)
         ss_str=list(dic[i].keys())
-        #print(i)
-        marker = list(marker_number(dict_specimen).keys())
         m = dict()
         for j in ss_str :
-            m_or_l=list(dic[i][j].keys()) #les markers si pas de substructures, sinon c'est les layers de la substructure
-            t=type(dic[i][j][m_or_l[0]]) is dict # pour savoir si c'est layer ou marker
-            if t==False : #c'est des markers
-                for k in m_or_l : #pour chaque marker
+            m_or_l=list(dic[i][j].keys())
+            t=type(dic[i][j][m_or_l[0]]) is dict
+            if t==False :
+                for k in m_or_l :
                     if k not in m :
                         m[k]=dict()
                         m[k][j]=dic[i][j][k]
                     else :
                         if j not in m[k] :
                             m[k][j] = dic[i][j][k]
-
             else :
                 if t==True:
-                    #print(j) #ss-structure
-                    for d in m_or_l : #d est la layer
+                    for d in m_or_l :
                         mm=list(dic[i][j][d].keys())
                         for l in mm :
                             if l not in m :
                                 m[l]=dict()
                                 m[l][j]=dict()
                                 m[l][j][d]=dic[i][j][d][l]
-
-
-        liste.append(m)
+        lines_of_each_layer.append(m)
     return(liste)
 
-def plot_marker (dict_specimen) : #within each structure of a given species, for each marker it plots an histogram of the proportion of spiny/aspiny/sparsely spiny with or without reconstruction in each layer
+def spiny_reconstruction_transgenic_line_state_plot (dict_species) : #within each structure of a given species, for each marker it plots an histogram of the proportion of spiny/aspiny/sparsely spiny with or without reconstruction in each layer
+    '''
+    Within each structure of a given species, for each transgenic line it plots an histogram of its proportion of spiny/aspiny/sparsely spiny with or without reconstruction in each layer
 
-    l=markers(dict_specimen)
-    for i in l :
+    Parameters
+    ----------
+    dict_species : Dictionary
+        dictionary from the take_id function, can only be a dictionary containing mouse cells (no human cells since they don't have any line name)
 
-        t=type(i) is dict
-        if t==False :
-            titre=i
-        if t==True :
-            #print(i)
-            for j in i :
-                aa=0
-                t=type(j) is dict
-                #print(j)
-                if t==False:
-                    ss_titre=j
-                    layers=list(i[j].keys())
-                    len_spi_no=[]
-                    len_spi_yes=[]
-                    len_asp_no=[]
-                    len_asp_yes=[]
-                    len_spa_no=[]
-                    len_spa_yes=[]
+    '''
 
+    l = markers(dict_specimen)
+    for i in l:
+
+        t = type(i) is dict
+        if t == False:
+            titre = i
+        if t == True:
+            for j in i:
+                aa = 0
+                t = type(j) is dict
+                if t == False:
+                    ss_titre = j
+                    layers = list(i[j].keys())
+                    len_spi_no = []
+                    len_spi_yes = []
+                    len_asp_no = []
+                    len_asp_yes = []
+                    len_spa_no = []
+                    len_spa_yes = []
                     spi_no = []
                     spi_yes = []
                     asp_no = []
@@ -317,110 +359,226 @@ def plot_marker (dict_specimen) : #within each structure of a given species, for
                     spa_no = []
                     spa_yes = []
                     a, b, c, d, e, f = spiny_reconstruction(dict_specimen)
-                    for k in layers :
-                        #print(k)
-                        ids = i[j][k]
-                        #print(a)
-                        for z in ids :
-                            if z in a :
-                                spi_no.append(z)
-                            else :
-                                if z in b :
-                                    spi_yes.append(z)
-                                else :
-                                    if z in c :
-                                        asp_no.append(z)
-                                    else :
-                                        if z in d :
-                                            asp_yes.append(z)
-                                        else :
-                                            if z in e :
-                                                spa_no.append(z)
+                    for k in layers:
+                        f = type(i[j][k]) is dict
+                        if f == False:
+                            ss_title = " "
+                            lab = layers
+                            ids = i[j][k]
+                            for z in ids:
+                                if z in a:
+                                    spi_no.append(z)
+                                else:
+                                    if z in b:
+                                        spi_yes.append(z)
+                                    else:
+                                        if z in c:
+                                            asp_no.append(z)
+                                        else:
+                                            if z in d:
+                                                asp_yes.append(z)
                                             else:
-                                                spa_yes.append(z)
-                        len_spi_no.append(len(spi_no))
-                        len_spi_yes.append(len(spi_yes))
-                        len_asp_no.append(len(asp_no))
-                        len_asp_yes.append(len(asp_yes))
-                        len_spa_no.append(len(spa_no))
-                        len_spa_yes.append(len(spa_yes))
-                    #fig, ax = plt.subplots()
-                    grd_titre=titre+" "+str(ss_titre)
-                    plt.bar(layers,len_spi_no,label='spiny without reconstruction')
-                    plt.bar(layers,len_spi_yes,label='spiny with reconstruction')
-                    plt.bar(layers,len_asp_no,label='aspiny without reconstruction')
-                    plt.bar(layers,len_asp_yes,label='aspiny with reconstruction')
-                    plt.bar(layers,len_spa_no,label='sparsely spiny without reconstruction')
-                    plt.bar(layers,len_spa_yes,label='sparsely spiny with reconstruction')
+                                                if z in e:
+                                                    spa_no.append(z)
+                                                else:
+                                                    spa_yes.append(z)
+                            len_spi_no.append(len(spi_no))
+                            len_spi_yes.append(len(spi_yes))
+                            len_asp_no.append(len(asp_no))
+                            len_asp_yes.append(len(asp_yes))
+                            len_spa_no.append(len(spa_no))
+                            len_spa_yes.append(len(spa_yes))
+                        else:
+                            if f == True:
+                                ss_title = ", " + str(k) + ", "
+                                for layer in i[j][k]:
+                                    lab = list(i[j][k].keys())
+                                    ids = i[j][k][layer]
+                                    for z in ids:
+                                        if z in a:
+                                            spi_no.append(z)
+                                        else:
+                                            if z in b:
+                                                spi_yes.append(z)
+                                            else:
+                                                if z in c:
+                                                    asp_no.append(z)
+                                                else:
+                                                    if z in d:
+                                                        asp_yes.append(z)
+                                                    else:
+                                                        if z in e:
+                                                            spa_no.append(z)
+                                                        else:
+                                                            spa_yes.append(z)
+                                    len_spi_no.append(len(spi_no))
+                                    len_spi_yes.append(len(spi_yes))
+                                    len_asp_no.append(len(asp_no))
+                                    len_asp_yes.append(len(asp_yes))
+                                    len_spa_no.append(len(spa_no))
+                                    len_spa_yes.append(len(spa_yes))
+                    grd_titre = titre + ss_title + str(ss_titre)
+                    plt.bar(lab, len_spi_no, label='spiny without reconstruction')
+                    plt.bar(lab, len_spi_yes, label='spiny with reconstruction')
+                    plt.bar(lab, len_asp_no, label='aspiny without reconstruction')
+                    plt.bar(lab, len_asp_yes, label='aspiny with reconstruction')
+                    plt.bar(lab, len_spa_no, label='sparsely spiny without reconstruction')
+                    plt.bar(lab, len_spa_yes, label='sparsely spiny with reconstruction')
                     plt.title(grd_titre)
                     plt.legend()
-                    #plt.show()
+                    plt.show()
 
-def marker_number (dict_specimen) : #return a dictionary with the marker names and how many they are ; the "total" is only a verification that the dic_type as indeed all the id of the dict_specimen
-    dico=all_cell_markers(dict_specimen)
+def transgenic_line_number (dict_species) : #return a dictionary with the marker names and how many they are ; the "total" is only a verification that the dic_type as indeed all the id of the dict_specimen
+    '''
+    Returns for each transgenic line its cell number within the species brain (can only be mouse)
+
+    Parameters
+    ----------
+    dict_species : Dictionary
+        dictionary from the take_id function, can only be a dictionary containing mouse cells (no human cells since they don't have any line name)
+
+    Returns
+    -------
+    dic_transgenic_line : Dictionary
+        dictionary in which each key is a transgenic line and the values the number of cells expressing this trangenic line
+
+    '''
+
+    dico=structures_transgenic_lines(dict_species)
     total = 0
-    dico_marker = dict()
+    dic_transgenic_line = dict()
     for i in dico:
         t=type(dico[i]) is dict
         if t==False :
-            if i not in dico_marker :
-                dico_marker[i]=len(dico[i])
+            if i not in dic_transgenic_line :
+                dic_transgenic_line[i]=len(dico[i])
             else :
-                dico_marker[i]=dico_marker[i]+len(dico[i])
+                dic_transgenic_line[i]=dic_transgenic_line[i]+len(dico[i])
         for j in dico[i]:
             t = type(dico[i][j]) is dict
             if t == False:
                 total = total + len(dico[i][j])
-                if j not in dico_marker:
-                    dico_marker[j] = len(dico[i][j])
+                if j not in dic_transgenic_line:
+                    dic_transgenic_line[j] = len(dico[i][j])
                 else:
-                    dico_marker[j] = dico_marker[j] + len(dico[i][j])
+                    dic_transgenic_line[j] = dic_transgenic_line[j] + len(dico[i][j])
             else:
                 for k in dico[i][j]:
                     t = type(dico[i][j][k]) is dict
                     if t == False:
                         total = total + len(dico[i][j][k])
                         if k not in dico_marker:
-                            dico_marker[k] = len(dico[i][j][k])
+                            dic_transgenic_line[k] = len(dico[i][j][k])
                         else:
-                            dico_marker[k] = dico_marker[k] + len(dico[i][j][k])
+                            dic_transgenic_line[k] = dic_transgenic_line[k] + len(dico[i][j][k])
 
                     else:
                         for z in dico[i][j][k]:
                             t = type(dico[i][j][k][z]) is dict
                             if t == False:
                                 total = total + len(dico[i][j][k][z])
-                                if z not in dico_marker:
-                                    dico_marker[z] = len(dico[i][j][k][z])
+                                if z not in dic_transgenic_line :
+                                    dic_transgenic_line[z] = len(dico[i][j][k][z])
                                 else:
-                                    dico_marker[z] = dico_marker[z] + len(dico[i][j][k][z])
-    return (dico_marker)
+                                    dic_transgenic_line[z] = dic_transgenic_line[z] + len(dico[i][j][k][z])
+    return (dic_transgenic_line)
 
-def plot_marker_number(dict_specimen) :
-    
-    #plot an histogram of the all the markers of the specimen and how many cells have those markers
-    d=marker_number(dict_specimen)
+def plot_transgenic_line_number(dict_species) :
+    '''
+    Plot an histogram of all the transgenic lines in the given species
+
+    Parameters
+    ----------
+    dict_species : Dictionary
+        dictionary from the take_id function, can only be a dictionary containing mouse cells (no human cells since they don't have any line name)
+
+    '''
+
+    d=transgenic_line_number(dict_species)
     height=d.values()
     bars=d.keys()
     x_pos=np.arange(1,370,10)
     plt.bar(x_pos, height,width=5)
     plt.xticks(x_pos,bars,rotation=90,fontsize=10)
-    specie=dict_specimen[0]["donor__species"]
+    specie=dict_species[0]["donor__species"]
     title="markers of the "+specie
     plt.tight_layout()
     plt.title(title)
     plt.show()
 
 
-
-def plot_number_structures (dict_structure) : 
+def structure (dict_species) : #return all the structures, as well as its substructures and layers, of a given specimen as a dictionary ; need to have run the dict_specimen in first place
     '''
-    Plots of the number of cells within the structure/substructure/layer for a given specimen
+    For each structure/substructure it returns the number of cells in the layers
 
     Parameters
     ----------
-    dict_structure : Dictionnary
-        Dictionnary from structure_dict function.
+    dict_species : Dictionary
+        dictionary from the take_id function, can only be a dictionary containing mouse cells (no human cells since they don't have any line name)
+
+    Returns
+    -------
+    dic_structure : Dictionary
+        dictionary in which each key is the structure/substructure/layer and the values are the number of cells expressed in those structures
+
+    '''
+
+    i=0
+    dic_structure=dict()
+    while i<len(dict_species) :
+        full_name=dict_species[i]['structure__name']
+        j=0
+        for e in full_name :
+            if e=="," :
+                j=j+1
+        if j==1 :
+            name1,layer1=full_name.split(",")
+            name=name1.replace('"','')
+            layer=layer1.replace('"','')
+            if name not in dic_structure :
+                dic_structure[name] = dict()
+                dic_structure[name][layer] = 1
+            else :
+                if layer not in dic_structure[name] :
+                    dic_structure[name][layer]=1
+                else :
+                    dic_structure[name][layer]=dic_structure[name][layer]+1
+        else :
+            if j==2 :
+                name1,subname,layer1=full_name.split(",")
+                name = name1.replace('"', '')
+                layer = layer1.replace('"', '')
+                if name not in dic_structure:
+                    dic_structure[name] = dict()
+                    dic_structure[name][subname] =dict()
+                    dic_structure[name][subname][layer]=1
+                else :
+                    if subname not in dic_structure[name] :
+                        dic_structure[name][subname] = dict()
+                        dic_structure[name][subname][layer] = 1
+                    else :
+                        if layer not in dic_structure[name][subname] :
+                            dic_structure[name][subname][layer] = 1
+                        else:
+                            dic_structure[name][subname][layer]=dic_structure[name][subname][layer]+1
+        if j==0 :
+            if full_name not in dic_structure :
+                dic_structure[full_name]=1
+            else :
+                dic_structure[full_name]=dic_structure[full_name]+1
+        i=i+1
+    return(dic_structure)
+
+
+
+def plot_number_structures (dict_structure) : 
+    '''
+    Plots of the number of cells within the structure/substructure/layer for a given species
+
+    Parameters
+    ----------
+    dict_structure : Dictionary
+        Dictionary from structure function
 
     Returns
     -------
@@ -428,7 +586,7 @@ def plot_number_structures (dict_structure) :
 
     '''
     
-    structures=list(dict_structure.keys()) #liste des noms de structures : primary visual area, etc. =21 structures
+    structures=list(dict_structure.keys())
     test=type(dict_structure[structures[0]]) is dict
     if test==False :
         li=list(dict_structure.keys())
@@ -439,15 +597,15 @@ def plot_number_structures (dict_structure) :
         plt.show()
     else :
         for i in structures :
-            ss_structure=list(dict_structure[i].keys()) #pour un nom de structures, on prend ses keys : peut être les layers ou des sous-structures
-            t=type(dict_structure[i][ss_structure[0]]) is dict #on regarde si la première key de la structure est un dict ou non : si est un dict c'est une sous structure, si non c'est une layer
+            ss_structure=list(dict_structure[i].keys())
+            t=type(dict_structure[i][ss_structure[0]]) is dict
             if t==True :
                 j=0
                 r=0
-                while j<len(ss_structure) : #pour chaque sous structure
+                while j<len(ss_structure) :
                     if type(dict_structure[i][ss_structure[j]])is dict:
-                        labels=list(dict_structure[i][ss_structure[j]].keys()) #liste des layers présentes dans la sous structure
-                        val=list(dict_structure[i][ss_structure[j]].values()) #liste du nbre de cell pour chaque layer
+                        labels=list(dict_structure[i][ss_structure[j]].keys())
+                        val=list(dict_structure[i][ss_structure[j]].values())
                         width=0.35+r
                         plt.bar(labels, val, width, label=str(ss_structure[j]))
                         plt.title(str(i))
@@ -472,46 +630,82 @@ def plot_number_structures (dict_structure) :
                 ax.set_title(str(i))
             plt.show()
 
-def number_of_sweeps (id_specimen) :
+def number_of_sweeps (cell_id) :
     '''
-    Print total number of sweeps for a given specimen
+    Returns the total number of sweeps for a given cell id
 
     Parameters
     ----------
-    id_specimen : list
-        id_list from take_id function.
+    cell_id : str
+        the id of the cell.
 
     Returns
     -------
-    None.
+    number : integer
+        the number of sweeps
 
     '''
-    all_sweeps = ctc.get_ephys_sweeps(id_specimen)
-    print(len(all_sweeps))
+
+    all_sweeps = ctc.get_ephys_sweeps(cell_id)
+    number=len(all_sweeps)
+    return number
+
     
-def cell_ephys_info (id_specimen) : #return the cell electrophysiological info for a given id
+def cell_ephys_info (cell_id) : #return the cell electrophysiological info for a given id
+    '''
+    Returns the general electrophysiological info of a given cell
+
+    Parameters
+    ----------
+    cell_id : str
+        the id of the cell.
+
+    Returns
+    -------
+    i : Dictionary
+        dictionary in which the keys are the electrophysiological parameters and the values are the values
+
+    '''
+
     all_cell_features = ctc.get_ephys_features()
     for i in all_cell_features :
-        if i["specimen_id"]==id_specimen :
+        if i["specimen_id"]==cell_id :
             return i
         
         
-def sweep_info (id_specimen,sweep_nber): #return data info of a given sweep of a given id specimen
-    data_set = ctc.get_ephys_sweeps(id_specimen)
+def sweep_info (cell_id,sweep_nber): #return data info of a given sweep of a given id specimen
+    '''
+    For a given cell and its given sweep number it returns all the info of the sweep
+
+
+    Parameters
+    ----------
+    cell_id : str
+        the id of the cell.
+    sweep_nbre : integer
+
+    Returns
+    -------
+    i : dictionary
+        Dictionary in which the keys are the parameters of the sweep
+
+    '''
+
+    data_set = ctc.get_ephys_sweeps(cell_id)
     for i in data_set :
         if i['sweep_number']==sweep_nber:
             return i
         
         
-def plot_stimulus (id_specimen,sweep) : 
+def plot_stimulus (cell_id,sweep) :
     '''
-    Plot the stimulus in pA and the cell response (in mV) 
+    Plot the stimulus (in pA) and the cell response (in mV)
 
     Parameters
     ----------
-    id_specimen : int
-        Specimen id found in the id_list from take_id function..
-    sweep : int
+    cell_id : str
+        cell_id found in the id_list from take_id function..
+    sweep : str
         sweep number found in stimulus_type function 
 
     Returns
@@ -520,8 +714,8 @@ def plot_stimulus (id_specimen,sweep) :
 
     '''
     
-    data_set = ctc.get_ephys_data(id_specimen)
-    all_sweeps = ctc.get_ephys_sweeps(id_specimen)
+    data_set = ctc.get_ephys_data(cell_id)
+    all_sweeps = ctc.get_ephys_sweeps(cell_id)
     for j in all_sweeps :
         if j["sweep_number"]==sweep :
             if j["stimulus_name"]=="Test":
@@ -545,22 +739,22 @@ def plot_stimulus (id_specimen,sweep) :
                 plt.title(j['stimulus_name'])
                 plt.show()
 
-def stimulus_type (id_specimen): 
+def stimulus_type (cell_id):
     '''
-    Return a dictionary with the keys being the different stimulus types and the values are the sweep numbers
+    Returns for the different stimuli the sweeps using those stimuli
 
     Parameters
     ----------
-    id_specimen : int
-        Specimen id found in the id_list from take_id function.
+    cell_id : str
+        cell_id found in the id_list from take_id function.
 
     Returns
     -------
-    dict_stimuli : dictionnary
-        dictionary with the keys being the different stimulus types and the values are the sweep numbers.
+    dict_stimuli : dictionary
+        dictionary with the keys being the different stimulus types and the values are the lists of sweep numbers.
 
     '''
-    all_sweeps = ctc.get_ephys_sweeps(id_specimen)
+    all_sweeps = ctc.get_ephys_sweeps(cell_id)
     dict_stimuli=dict()
     for i in all_sweeps :
         number = i["sweep_number"]
@@ -921,12 +1115,27 @@ def random_id_list(id_list,n):
        new_id_list.append(id_list[index])
    return new_id_list
 
-def ephys_spike_key_extractor(id_specimen,sweep,t_start,t_end): #return the keys/feature names caracterizing the spike ; if don't want to put t_start/end, make them equal to None
-    dict_stimulus = stimulus_type(id_specimen)
+def ephys_spike_key_extractor(cell_id,sweep,t_start,t_end): #return the keys/feature names caracterizing the spike ; if don't want to put t_start/end, make them equal to None
+    """
+    For a given cell and sweep it returns all the parameters (feature names) caracterizing the spikes
+
+    Parameters
+    ----------
+    cell_id : str
+    sweep : sweep number
+    t_start : start of time window for spike detection (if no value, put None)
+    t_end : end of time window for spike detection (if no value, put None)
+
+    Returns
+    -------
+    liste : list of the parameters caracterizing the spikes
+    """
+
+    dict_stimulus = stimulus_type(cell_id)
     if sweep in dict_stimulus['Test']:
         return ('no data to return')
     else:
-        data_set = ctc.get_ephys_data(id_specimen)
+        data_set = ctc.get_ephys_data(cell_id)
         sweep_data = data_set.get_sweep(sweep)
         print(sweep_data["index_range"])
         index_range = sweep_data["index_range"]
@@ -947,8 +1156,23 @@ def ephys_spike_key_extractor(id_specimen,sweep,t_start,t_end): #return the keys
 
 
 
-def spike_info (id_specimen,sweep_number,key) : #with a given feature name, and for a given sweep of a given id specimen, this function returns the data of the feature
-    data_set = ctc.get_ephys_data(id_specimen)
+def spike_info (cell_id,sweep_number,key) : #with a given feature name, and for a given sweep of a given id specimen, this function returns the data of the feature
+    """
+    For a given cell, sweep and parameter of the spikes, it returns the info of this parameter
+
+    Parameters
+    ----------
+    cell_id : str
+    sweep_number : str
+    key : str
+        the spike parameter
+
+    Returns
+    -------
+    info : list of the value of the spike parameter
+    """
+
+    data_set = ctc.get_ephys_data(cell_id)
     sweep_data = data_set.get_sweep(sweep_number)
     index_range = sweep_data["index_range"]
     i = sweep_data["stimulus"][0:index_range[1] + 1]  # in A = values of the stimulus
@@ -966,11 +1190,30 @@ def spike_info (id_specimen,sweep_number,key) : #with a given feature name, and 
 
 #Morphology :
 
-def spiny_state (dict_specimen) :
+def spiny_state (dict_species) :
+    """
+    Returns the cell ids being spiny, sparsely spiny or aspiny.
+
+    Parameters
+    ----------
+    dict_species : Dictionary
+
+    Returns
+    -------
+    spiny : list
+        list of cell ids bein spiny
+
+    aspiny : list
+        list of cell ids being aspiny
+
+    sparsely_spiny : list
+        list of cell ids being sparsely spiny
+    """
+
     spiny=[]
     aspiny=[]
     sparsely_spiny=[]
-    for i in dict_specimen :
+    for i in dict_species :
         if i['tag__dendrite_type']=='spiny' :
             spiny.append(i['specimen__id'])
         else :
@@ -980,17 +1223,62 @@ def spiny_state (dict_specimen) :
                 sparsely_spiny.append(i['specimen__id'])
     return(spiny,aspiny,sparsely_spiny)
 
-def reconstruction(dict_specimen) :
+def reconstruction(dict_species) :
+    """
+    Returns the cell ids having and having not a morphological reconstruction
+
+    Parameters
+    ----------
+    dict_species : Dictionary
+
+    Returns
+    -------
+    no : list
+        list of cell ids having not a reconstruction
+
+    yes : list
+        list of cell ids having a reconstruction
+    """
+
     no=[]
     yes=[]
-    for i in dict_specimen :
+    for i in dict_species :
         if i["nr__reconstruction_type"]==None :
             no.append(i["specimen__id"])
         else :
             yes.append(i["specimen__id"])
     return (no,yes)
 
-def spiny_reconstruction (dict_specimen) :
+def spiny_reconstruction (dict_species) :
+    """
+    Returns the cell ids according to if they are spiny/aspiny/sparsely spiny and have or not a reconstruction.
+
+    Parameters
+    ----------
+    dict_species : Dictionary
+
+    Returns
+    -------
+    spiny_no_reconstruction : list
+        list of cell ids being spiny without a reconstruction
+
+    spiny_reconstruction : list
+        list of cell ids being spiny with a reconstruction
+
+    aspiny_no_reconstruction : list
+        list of cell ids being aspiny without a reconstruction
+
+    aspiny_reconstruction :list
+        list cell ids being aspiny with a reconstruction
+
+    sparsely_no_reconstruction : list
+        list of cell ids being sparsely spiny without a reconstruction
+
+    sparsely_reconstruction :list
+        list of cell ids being sparsely spiny with a reconstruction
+
+    """
+
     spiny_no_reconstruction=[]
     spiny_reconstruction=[]
     aspiny_no_reconstruction=[]
@@ -998,7 +1286,7 @@ def spiny_reconstruction (dict_specimen) :
     sparsely_no_reconstruction=[]
     sparsely_reconstruction=[]
     no,yes=reconstruction(dict_specimen)
-    spiny,aspiny,sparsely=spiny_state(dict_specimen)
+    spiny,aspiny,sparsely=spiny_state(dict_species)
     for i in yes :
         if i in spiny :
             spiny_reconstruction.append(i)
@@ -1017,25 +1305,78 @@ def spiny_reconstruction (dict_specimen) :
                 sparsely_no_reconstruction.append(i)
     return(spiny_no_reconstruction,spiny_reconstruction,aspiny_no_reconstruction,aspiny_reconstruction,sparsely_no_reconstruction,sparsely_reconstruction)
 
-def morpho_info(id_specimen): #for a given id, returns the morpho info of the cell
+def morpho_info(cell_id): #for a given id, returns the morpho info of the cell
+    """
+    Returns the morphological info of this cell
+
+    Parameters
+    ----------
+    cell_id : str
+
+    Returns
+    -------
+    i : Dictionary
+
+    """
+
     all_morpho = ctc.get_morphology_features()
     for i in all_morpho:
-        if i["specimen_id"] == id_specimen:
+        if i["specimen_id"] == cell_id:
             return i
 
-def swc_morpho(id_specimen,name) : #return a link to download the morphology swc file of a given cell
-    swc_file=ctc.get_reconstruction(id_specimen,name)
+def swc_morpho(cell_id,name) : #return a link to download the morphology swc file of a given cell
+    """
+    Returns the swc file of the cell
+
+    Parameters
+    ----------
+    cell_id : str
+    name : str
+        name we want to give the file ?
+
+    Returns
+    -------
+    swc_file : a file + a link
+
+    """
+    swc_file=ctc.get_reconstruction(cell_id,name)
     return(swc_file)
 
-def compartment_nber (id_specimen) :
-    all_morpho=ctc.get_reconstruction(id_specimen)
+def compartment_nber (cell_id) :
+    """
+    For a given cell it returns the number of all its compartments
+
+    Parameters
+    ----------
+    cell_id : str
+
+    Returns
+    -------
+    compartment_number : int
+
+    """
+
+    all_morpho=ctc.get_reconstruction(cell_id)
     compartment_number=len(all_morpho.compartment_list)
     return(compartment_number)
 
 
-def twoD_morpho(id_specimen):
-    morphology = ctc.get_reconstruction(id_specimen)
-    markers = ctc.get_reconstruction_markers(id_specimen)
+def twoD_morpho(cell_id):
+    """
+    For a given cell it plots it morphology in different spaces (but always in 2D)
+
+    Parameters
+    ----------
+    cell_id : str
+
+    Returns
+    -------
+    None
+
+    """
+
+    morphology = ctc.get_reconstruction(cell_id)
+    markers = ctc.get_reconstruction_markers(cell_id)
     fig, axes = plt.subplots(1, 2, sharey=True, sharex=True)
     axes[0].set_aspect('equal', 'box')
     axes[1].set_aspect('equal', 'box')
@@ -1077,9 +1418,7 @@ def twoD_morpho(id_specimen):
     axes[1].legend(handles=[red_patch,black_patch,green_patch,blue_patch,grey_patch],bbox_to_anchor=(0,1.06,1,0.2))
     plt.show()
 
-def number_of_sweeps (id_specimen) :
-    all_sweeps = ctc.get_ephys_sweeps(id_specimen)
-    print(len(all_sweeps))
+
     
 # ctc = CellTypesCache(manifest_file='cell_types/manifest.json') #create the manifest file
 
