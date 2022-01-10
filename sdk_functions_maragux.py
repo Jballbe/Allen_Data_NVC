@@ -32,7 +32,7 @@ def cell_info (id_specimen, dict_specimen) : #return the cell info for a given i
     for i in dict_specimen :
         if i["specimen__id"]==id_specimen :
             return i
-def cell_marker (id_specimen, dict_specimen):
+def cell_marker (id_specimen, dict_specimen): #only works for mouse, the human species doesn't have a line name
     for i in dict_specimen :
         if i["specimen__id"]==id_specimen :
             return i["line_name"]
