@@ -110,6 +110,30 @@ def take_id(name_file) :
             id_human.append(i["specimen__id"])
     return (id_mouse,id_human)
 
+def cell_info (cell_id, dict_species) :
+    '''
+    Returns info caracterizing the cell
+
+    Parameters
+    ----------
+    cell_id : str
+        one str value of the id_list from take_id function
+
+    dict_species : Dictionary
+        dictionary from take_id function.
+
+    Returns
+    -------
+    dict_cell_info : Dictionary
+        contains as keys the parameters of the cell and as values the values corresponding to those parameters
+
+    '''
+
+    for i in dict_species :
+        if i["specimen__id"]==cell_id :
+            dict_cell_info=i
+            return dict_cell_info
+
 
 def ephys_web_page(cell_id) :
     '''
@@ -201,6 +225,29 @@ def structure_dict (dict_species) :
                 dict_structure[full_name]=dict_structure[full_name]+1
         i=i+1
     return(dict_structure)
+
+def transgenic_line_name (cell_id,dict_species) :
+    '''
+    Returns the name of the transgenic line
+
+    Parameters
+    ----------
+    cell_id : str
+        the id of the cell.
+
+    dict_species : Dictionary
+        dictionary from take_id function.
+
+    Returns
+    -------
+    line_name : str
+        Name of the transgenic line
+
+    '''
+    for i in dict_species :
+        if i["specimen__id"]==cell_id :
+            line_name=i["line_name"]
+            return line_name
 
 
 def structures_transgenic_lines (dict_species) :
