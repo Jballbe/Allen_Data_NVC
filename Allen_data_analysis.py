@@ -19,6 +19,7 @@ import matplotlib.patches as mpatches
 from allensdk.ephys.ephys_extractor import EphysSweepFeatureExtractor
 
 
+
 ctc = CellTypesCache(manifest_file='cell_types/manifest.json')
 
 def get_cells(file_name,species,reconstruction=False, morphology=False): 
