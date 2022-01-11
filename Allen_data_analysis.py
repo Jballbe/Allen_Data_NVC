@@ -23,7 +23,20 @@ ctc = CellTypesCache(manifest_file='cell_types/manifest.json')
 
 def get_cells(file_name,species,reconstruction=False, morphology=False): 
     '''
-    Download only the data you want
+    Download the data you want for a given species
+
+    Parameters
+    ----------
+    file_name : str
+        The name you want to give to you file
+
+    species : str
+        Name of the species you want to retreive data : Mouse, Human or All if you want both species in you data
+
+    Returns
+    -------
+    None (the file is directly saved)
+
     '''
 
     ctc = CellTypesCache(manifest_file='cell_types/manifest.json') #create the manifest file
@@ -98,7 +111,7 @@ def take_id(name_file) :
     return (id_mouse,id_human)
 
 
-def ephys_page(cell_id) :
+def ephys_web_page(cell_id) :
     '''
     The electrophysiological web page of the cell id in the Allen Brain Atlas is opened
 
@@ -505,70 +518,6 @@ def plot_transgenic_line_number(dict_species) :
     plt.tight_layout()
     plt.title(title)
     plt.show()
-
-
-def structure (dict_species) : #return all the structures, as well as its substructures and layers, of a given specimen as a dictionary ; need to have run the dict_specimen in first place
-    '''
-    For each structure/substructure it returns the number of cells in the layers
-
-    Parameters
-    ----------
-    dict_species : Dictionary
-        dictionary from the take_id function, can only be a dictionary containing mouse cells (no human cells since they don't have any line name)
-
-    Returns
-    -------
-    dic_structure : Dictionary
-        dictionary in which each key is the structure/substructure/layer and the values are the number of cells expressed in those structures
-
-    '''
-
-    i=0
-    dic_structure=dict()
-    while i<len(dict_species) :
-        full_name=dict_species[i]['structure__name']
-        j=0
-        for e in full_name :
-            if e=="," :
-                j=j+1
-        if j==1 :
-            name1,layer1=full_name.split(",")
-            name=name1.replace('"','')
-            layer=layer1.replace('"','')
-            if name not in dic_structure :
-                dic_structure[name] = dict()
-                dic_structure[name][layer] = 1
-            else :
-                if layer not in dic_structure[name] :
-                    dic_structure[name][layer]=1
-                else :
-                    dic_structure[name][layer]=dic_structure[name][layer]+1
-        else :
-            if j==2 :
-                name1,subname,layer1=full_name.split(",")
-                name = name1.replace('"', '')
-                layer = layer1.replace('"', '')
-                if name not in dic_structure:
-                    dic_structure[name] = dict()
-                    dic_structure[name][subname] =dict()
-                    dic_structure[name][subname][layer]=1
-                else :
-                    if subname not in dic_structure[name] :
-                        dic_structure[name][subname] = dict()
-                        dic_structure[name][subname][layer] = 1
-                    else :
-                        if layer not in dic_structure[name][subname] :
-                            dic_structure[name][subname][layer] = 1
-                        else:
-                            dic_structure[name][subname][layer]=dic_structure[name][subname][layer]+1
-        if j==0 :
-            if full_name not in dic_structure :
-                dic_structure[full_name]=1
-            else :
-                dic_structure[full_name]=dic_structure[full_name]+1
-        i=i+1
-    return(dic_structure)
-
 
 
 def plot_number_structures (dict_structure) : 
