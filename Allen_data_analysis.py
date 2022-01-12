@@ -362,7 +362,7 @@ def layers_transgenic_lines(
                                 m[l][j] = dict()
                                 m[l][j][d] = dic[i][j][d][l]
         lines_of_each_layer.append(m)
-    return (liste)
+    return (lines_of_each_layer)
 
 
 def spiny_reconstruction_transgenic_line_state_plot(
@@ -375,7 +375,7 @@ def spiny_reconstruction_transgenic_line_state_plot(
         dictionary from the take_id function, can only be a dictionary containing mouse cells (no human cells since they don't have any line name)
     '''
 
-    l = markers(dict_specimen)
+    l = layers_transgenic_lines(dict_species)
     for i in l:
 
         t = type(i) is dict
@@ -400,7 +400,7 @@ def spiny_reconstruction_transgenic_line_state_plot(
                     asp_yes = []
                     spa_no = []
                     spa_yes = []
-                    a, b, c, d, e, f = spiny_reconstruction(dict_specimen)
+                    a, b, c, d, e, f = spiny_reconstruction(dict_species)
                     for k in layers:
                         f = type(i[j][k]) is dict
                         if f == False:
