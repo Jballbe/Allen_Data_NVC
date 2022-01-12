@@ -18,7 +18,7 @@ from allensdk.core.swc import Marker
 import matplotlib.patches as mpatches
 from allensdk.ephys.ephys_extractor import EphysSweepFeatureExtractor
 
-#change '.ix' to '.loc' in allensdk\ephys\ephys_extractor.py (to avoid error for the .process_spikes() function 
+#change '.ix' to '.loc' in allensdk\ephys\ephys_extractor.py (to avoid error for the .process_spikes() function
 
 ctc = CellTypesCache(manifest_file='cell_types/manifest.json')
 
@@ -65,8 +65,8 @@ def dict_specimen(name_file):
     Returns
     -------
     d_mouse : list
-        List of Dictionnary for all mouse specimen .
-    d_human : TYPE
+        List of Dictionnary for all mouse specimen
+    d_human : list
         List of dictionnary for all human specimen.
     '''
 
@@ -1165,7 +1165,7 @@ def reconstruction(dict_species):
     no = []
     yes = []
     for i in dict_species:
-        if i["nr__reconstruction_type"] == None:
+        if i['nr__reconstruction_type'] == None :
             no.append(i["specimen__id"])
         else:
             yes.append(i["specimen__id"])
@@ -1200,7 +1200,7 @@ def spiny_reconstruction(dict_species):
     aspiny_reconstruction = []
     sparsely_no_reconstruction = []
     sparsely_reconstruction = []
-    no, yes = reconstruction(dict_specimen)
+    no, yes = reconstruction(dict_species)
     spiny, aspiny, sparsely = spiny_state(dict_species)
     for i in yes:
         if i in spiny:
