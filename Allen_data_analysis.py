@@ -507,7 +507,7 @@ def transgenic_line_number(dict_species):
                     t = type(dico[i][j][k]) is dict
                     if t == False:
                         total = total + len(dico[i][j][k])
-                        if k not in dico_marker:
+                        if k not in dic_transgenic_line:
                             dic_transgenic_line[k] = len(dico[i][j][k])
                         else:
                             dic_transgenic_line[k] = dic_transgenic_line[k] + len(dico[i][j][k])
@@ -1273,7 +1273,7 @@ def compartment_nber(cell_id):
 
 def twoD_morpho(cell_id):
     """
-    For a given cell it plots it morphology in different spaces (but always in 2D)
+    For a given cell it plots its morphology in different spaces (but always in 2D)
     Parameters
     ----------
     cell_id : str
@@ -1324,6 +1324,43 @@ def twoD_morpho(cell_id):
     grey_patch = mpatches.Patch(color='grey', label='location of the axon truncations')
     axes[1].legend(handles=[red_patch, black_patch, green_patch, blue_patch, grey_patch],
                    bbox_to_anchor=(0, 1.06, 1, 0.2))
+    plt.show()
+
+def twoD_morpho_without_truncation (cell_id) :
+    """
+    For a given cell it plots its morphology in different spaces (but always in 2D), but without the indications of axon/dendrite truncations
+    Parameters
+    ----------
+    cell_id : str
+    Returns
+    -------
+    None
+    """
+    morphology = ctc.get_reconstruction(cell_id)
+    fig, axes = plt.subplots(1, 2, sharey=True, sharex=True)
+    axes[0].set_aspect('equal', 'box')
+    axes[1].set_aspect('equal', 'box')
+
+    # Make a line drawing of x-y and y-z views
+    for n in morphology.compartment_list:
+        for c in morphology.children_of(n):  # print the different children compartments
+            if n['type'] == 2:
+                axes[0].plot([n['x'], c['x']], [n['y'], c['y']], color='red')
+                axes[1].plot([n['z'], c['z']], [n['y'], c['y']], color='red')
+            else:
+                if n['type'] == 1:  # soma
+                    axes[0].plot([n['x'], c['x']], [n['y'], c['y']], color='green')
+                    axes[1].plot([n['z'], c['z']], [n['y'], c['y']], color='green')
+                else:
+                    axes[0].plot([n['x'], c['x']], [n['y'], c['y']], color='black')
+                    axes[1].plot([n['z'], c['z']], [n['y'], c['y']], color='black')
+    axes[0].set_ylabel('y')
+    axes[0].set_xlabel('x')
+    axes[1].set_xlabel('z')
+    red_patch = mpatches.Patch(color='red', label='axons')
+    black_patch = mpatches.Patch(color='black', label='dendrites')
+    green_patch = mpatches.Patch(color='green', label='soma')
+    axes[1].legend(handles=[red_patch, black_patch, green_patch],bbox_to_anchor=(0, 1.06, 1, 0.2))
     plt.show()
 
 # ctc = CellTypesCache(manifest_file='cell_types/manifest.json') #create the manifest file
