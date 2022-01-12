@@ -1332,6 +1332,7 @@ def twoD_morpho_without_truncation (cell_id) :
     Parameters
     ----------
     cell_id : str
+
     Returns
     -------
     None
@@ -1362,6 +1363,77 @@ def twoD_morpho_without_truncation (cell_id) :
     green_patch = mpatches.Patch(color='green', label='soma')
     axes[1].legend(handles=[red_patch, black_patch, green_patch],bbox_to_anchor=(0, 1.06, 1, 0.2))
     plt.show()
+
+def id_reconstruction_given_structure (dic_species,structure_parent_acronym, reconstructed_yes_or_no) :
+    """
+    For a given species, structure and if there's a reconstruction or not, the function returns the cell_id having those caracteristics
+    Parameters
+    ----------
+    dic_species : Dictionary
+        Dictionary of all the cells of a species
+
+    structure_parent_acronym : str
+        the acronym of the structure of interest (ex : VISp)
+
+    reconstructed_yes_or_no : list
+        List of ids for cell having a reconstruction or having not a reconstruction
+
+    Returns
+    -------
+    structure_with_reconstruction : list
+        List of ids being in the given structure and having or not a reconstruction
+    """
+
+    structure_with_reconstruction = []
+    for i in reconstructed_yes_or_no :
+        info = cell_info(i, dic_species)
+        if info['structure_parent__acronym'] == structure_parent_acronym :
+            structure_with_reconstruction.append(i)
+    return(structure_with_reconstruction)
+
+def sorted_layers (id_list,dic_species) :
+    """
+    For a structure, it returns for each layer its ids
+
+    Parameters
+    ----------
+    id_list : list
+        list of ids of a structure
+
+    dic_species : Dictionary
+        Dictionary of all the cells of a species
+
+    Returns
+    -------
+    layer_1, layer_23, layer_4, layer_5, layer_6a, layer_6b : lists
+        Lists of ids of each layer
+    """
+
+    layer_1 = []
+    layer_23 = []
+    layer_4 = []
+    layer_5 = []
+    layer_6a = []
+    layer_6b = []
+    for i in id_list:
+        if cell_info(i, dic_species)['structure__layer'] == '6b':
+            layer_6b.append(cell_info(i,dic_species))
+        else:
+            if cell_info(i, dic_species)['structure__layer'] == '6a':
+                layer_6a.append(cell_info(i,dic_species))
+            else:
+                if cell_info(i, dic_species)['structure__layer'] == '5':
+                    layer_5.append(cell_info(i,dic_species))
+                else:
+                    if cell_info(i, dic_species)['structure__layer'] == '4':
+                        layer_4.append(cell_info(i,dic_species))
+                    else:
+                        if cell_info(i, dic_species)['structure__layer'] == '2/3':
+                            layer_23.append(cell_info(i,dic_species))
+                        else:
+                            layer_1.append(cell_info(i,dic_species))
+    return (layer_1,layer_23,layer_4,layer_5,layer_6a,layer_6b)
+
 
 # ctc = CellTypesCache(manifest_file='cell_types/manifest.json') #create the manifest file
 
