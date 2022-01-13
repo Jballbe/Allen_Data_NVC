@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 from allensdk.core.swc import Marker
 import matplotlib.patches as mpatches
-from allensdk.ephys.ephys_extractor import EphysSweepFeatureExtract
+from allensdk.ephys.ephys_extractor import EphysSweepFeatureExtractor
+
 ctc = CellTypesCache(manifest_file='cell_types/manifest.json') #create the manifest file
 #this is a new test
 cells = ctc.get_cells(file_name="all_cells",require_reconstruction=True)
