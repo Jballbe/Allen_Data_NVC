@@ -50,4 +50,4 @@ print(exp)
 #print(data_set.get_metadata())
 
 ##Find Cells of interests ; find experiments for Cells ; Download Experiment Data for a Cell ; Fluorescence Traces ; ROI Masks & analysis ; Neuropil Correction ; ....
-#cells = boc.get_cell_specimens() #very long bc there are 63251 cells
+#cells = boc.get_cell_specimens() #very long bc there are 63251 cells but works in a jupyter notebook 
