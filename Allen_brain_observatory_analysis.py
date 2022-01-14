@@ -43,11 +43,15 @@ exp = boc.get_ophys_experiments(experiment_container_ids=[cux2_ec_id],
 print("Experiment with static gratings:")
 print(exp)
 
-#data_set = boc.get_ophys_experiment_data(exp['id'])
-#got OSError: Unable to open file (truncated file: eof = 10190123, sblock->base_addr = 0, stored_eof = 197846895) : may be because the .h5 is partially downloaded or corrupted
+id=50237646
+file_name1='ophys_exp_data_of_cux2'
+data_set = boc.get_ophys_experiment_data(exp['id'],file_name=file_name1) #has to put a file_name bc otherwise it doesn't retreive it from the manifest
 
-# print out the metadata available in the NWB file
-#print(data_set.get_metadata())
+# print out the metadata available in the NWB file (which is here : 'ophys_exp_data_of_cux2')
+print(data_set.get_metadata())
 
 ##Find Cells of interests ; find experiments for Cells ; Download Experiment Data for a Cell ; Fluorescence Traces ; ROI Masks & analysis ; Neuropil Correction ; ....
-#cells = boc.get_cell_specimens() #very long bc there are 63251 cells but works in a jupyter notebook 
+file_name2='cell_specimens'
+cells = boc.get_cell_specimens(file_name=file_name2) #It's very long at first bc there are 63251 cells to dowonload cells
+specimen_id = 587179530
+cell = boc.get_cell_specimens(ids=[specimen_id])[0]
