@@ -2,6 +2,10 @@ from allensdk.core.mouse_connectivity_cache import MouseConnectivityCache
 import pandas as pd
 from allensdk.api.queries.ontologies_api import OntologiesApi
 import webbrowser
+import numpy as np
+import matplotlib.pyplot as plt
+
+
 mcc = MouseConnectivityCache()
 
 # open up a list of all of the experiments
@@ -9,10 +13,29 @@ mcc = MouseConnectivityCache()
 #structure_tree = mcc.get_structure_tree()
 #visp = structure_tree.get_structures_by_name(['Primary visual area'])[0] #[0] if there is more than one structure referenced, but since there is only VISp here the [0] could be removed
 
-def experiment_page (id_experiment) :
-    link = "https://connectivity.brain-map.org/projection/experiment/" + str(id_experiment)
+def experiment_page (experiment_id) :
+    '''
+    The web page informing about the experiment and the projection volume/density in the Allen Brain Atlas is opened
+    Parameters
+    ----------
+    experiment_id : int
+    '''
+
+    link = "https://connectivity.brain-map.org/projection/experiment/" + str(experiment_id)
     webbrowser.open(link)
-experiment_page(638314843)
+#experiment_page(113887162)
+
+def injection_cortical_map_page (experiment_id):
+    '''
+    The web page informing about the experiment and the projection volume/density in the Allen Brain Atlas is opened
+    Parameters
+    ----------
+    experiment_id : int
+    '''
+
+    link= "https://connectivity.brain-map.org/projection/experiment/cortical_map/"+str(experiment_id)
+    webbrowser.open(link)
+#injection_cortical_map_page(113887162)
 
 def experiments_structure (name_list) :
     '''
@@ -152,32 +175,122 @@ def stru_tree_id (list_id) : #for a given id refering to a list of info, it retu
     summary_structures = structure_tree.get_structures_by_set_id([list_id])
     stru_list = pd.DataFrame(summary_structures)
     return stru_list
-q=stru_tree_id(396673091)
+q=stru_tree_id(114512892)
 #print(q.loc[q[q['acronym']=='VISp2/3'].index[0]]) #gives the line of VISp2/3 by refering to the row number
 
-structure_tree = mcc.get_structure_tree()
-isocortex = structure_tree.get_structures_by_name(['Isocortex'])[0]
-# find wild-type injections into primary visual area
-visp = structure_tree.get_structures_by_acronym(['VISp'])[0]
-visp_experiments = mcc.get_experiments(cre=False,
-                                       injection_structure_ids=[visp['id']])
 
-iso=structure_tree.get_structures_by_acronym(['SSp-ll1'])[0]
-structure_unionizes = mcc.get_structure_unionizes([ e['id'] for e in visp_experiments ], is_injection=False,structure_ids=[isocortex['id']],include_descendants=True)
-stru_uni=mcc.get_structure_unionizes([ e['id'] for e in visp_experiments ], is_injection=False,structure_ids=[iso['id']],include_descendants=True)
-print("%d VISp non-injection, cortical structure unionizes" % len(structure_unionizes))
-print(structure_unionizes.loc[0])
+def all_structures (): #give all the structures experiments have been done on
+    all_experiments = mcc.get_experiments(dataframe=True)
+    ids = list(all_experiments['id'])
+    structure_dict = dict()
+    for i in ids:
+        info = all_experiments.loc[i]
+        if info['structure_name'] not in structure_dict:
+            structure_dict[info['structure_name']] = 1
+        else:
+            structure_dict[info['structure_name']] = structure_dict[info['structure_name']] + 1
+    return structure_dict
 
-print("%d VISp non-injection, cortical structure unionizes" % len(stru_uni))
-print(stru_uni.loc[96])
-ee=structure_tree.get_structures_by_id([1030])
-print(ee)
-all_experiments = mcc.get_experiments(dataframe=True)
-#print(all_experiments.loc[307297141])
+a=all_structures()
+#print(a)
 
-#307297141 : experiment id
+def plot_x_structures (number) : #plot the first x structures with the most experiments (e.g the structures having the most injection experiments)
+    all_experiments = mcc.get_experiments(dataframe=True)
+    ids = list(all_experiments['id'])
+    structure_dict = dict()
+    for i in ids:
+        info = all_experiments.loc[i]
+        if info['structure_name'] not in structure_dict:
+            structure_dict[info['structure_name']] = 1
+        else:
+            structure_dict[info['structure_name']] = structure_dict[info['structure_name']] + 1
+    values=structure_dict.values()
+    keys=structure_dict.keys()
+    maxi=dict()
+    i=0
+    while i<number:
+        maximum=max(structure_dict,key=structure_dict.get)
+        maxi[maximum]=structure_dict[maximum]
+        structure_dict.pop(maximum)
+        i=i+1
+    print(maxi)
+    title='the first '+str(number)+' structures with the highest number of experiments'
+    plt.bar(maxi.keys(), maxi.values(), width=0.5,align='center')
+    plt.xticks(rotation=10)
+    plt.title(title)
+    plt.show()
+#plot_x_structures(5)
 
-#with unionize we look for each experiment in a given structure (by giving their id experiments) it gives the the density of projecting signal, volume of projecting signal (and where it was mesured ? meaning structure_id)
-#may be what we're looking for : from a structure in which the experiment is done, it gives the projection volume in the other structures
 
-#create function : for a given id/structure injection of the experiment, we also give a structure acronym to see if there is projection in this structure and at what proportion/volume/density
+def structure_projection (name_structure_injection, experiment_id, cre) : #cre False or True ; 26min for first run and 1min50 for second run
+    #for a given id, it returns all the sub structures (takes into account the layers) it projects to
+    structure_tree = mcc.get_structure_tree()
+    structure_injection = structure_tree.get_structures_by_name([name_structure_injection])[0]
+    structure_injection_experiments = mcc.get_experiments(cre=cre,injection_structure_ids=[structure_injection['id']])
+    print('if first run of this function in the script, it may take some time to compute')
+    unionize=mcc.get_structure_unionizes([e['id'] for e in structure_injection_experiments], is_injection=False, include_descendants=True) #long to compute at first
+    row_numbers= np.arange(0,len(unionize))
+    j=0
+    row_list=[]
+    for i in row_numbers :
+        j=j+1
+        if unionize.loc[i]["experiment_id"]==experiment_id :
+            row_list.append(j)
+    new_dataframe=unionize[row_list[0]:row_list[-1]+1]
+    new_row_numbers=np.arange(row_list[0],row_list[-1])
+    projection_structures_dict = dict()
+    for i in new_row_numbers :
+        info=structure_tree.get_structures_by_id([new_dataframe.loc[i]['structure_id']])
+        if info[0]['name'] not in projection_structures_dict :
+            projection_structures_dict[info[0]['name']] = 1
+        else:
+            projection_structures_dict[info[0]['name']] = projection_structures_dict[info[0]['name']] + 1
+    projection_structures_name=list(projection_structures_dict.keys())
+    return (projection_structures_name)
+
+#h=structure_projection('Primary visual area',638314843,None)
+#print(h)
+
+#function which takes into account an injection_structure and a projection_structure (but not the id), if target not specified it returns for all the experiment (x3 for the hemisphere) the projections results for each target_structure
+def injection_projection_structure (name_structure_injection,cre,target_projection) :
+    structure_tree = mcc.get_structure_tree()
+    structure_injection = structure_tree.get_structures_by_name([name_structure_injection])[0]
+    structure_injection_experiments = mcc.get_experiments(cre=cre, injection_structure_ids=[structure_injection['id']])
+    if target_projection!=None :
+        target=structure_tree.get_structures_by_name([target_projection])[0]
+        unionize = mcc.get_structure_unionizes([e['id'] for e in structure_injection_experiments], is_injection=False,structure_ids=[target['id']],include_descendants=True)
+        print('There are ' + str(len(unionize)/3) + ' experiments in which ' +str(name_structure_injection)+' projects to ' +str(target_projection))
+    else :
+        unionize = mcc.get_structure_unionizes([e['id'] for e in structure_injection_experiments], is_injection=False, include_descendants=True)
+        print("the projection results of the "+str(len(unionize)/282)+" experiments with an injection done within "+str(name_structure_injection))
+    return (unionize)
+
+#k=injection_projection_structure('Primary visual area',None,None)
+#print(k)
+
+
+#function which returns, for a given id (and injection_structure) and projection_structure a table with volume_porjection (as well as injection volume) for each hemisphere
+
+
+def id_projection_structure (name_structure_injection,cre,target_projection,experiment_id) :
+    structure_tree = mcc.get_structure_tree()
+    structure_injection = structure_tree.get_structures_by_name([name_structure_injection])[0]
+    structure_injection_experiments = mcc.get_experiments(cre=cre, injection_structure_ids=[structure_injection['id']])
+    target = structure_tree.get_structures_by_name([target_projection])[0]
+    unionize = mcc.get_structure_unionizes([e['id'] for e in structure_injection_experiments], is_injection=False,structure_ids=[target['id']], include_descendants=True)
+    row_numbers = np.arange(0, len(unionize))
+    row_list = []
+    for i in row_numbers:
+        if unionize.loc[i]["experiment_id"] == experiment_id:
+            row_list.append(i)
+    print(row_list)
+    print(row_list[-1])
+    new_dataframe = unionize[row_list[0]:row_list[-1]+1]
+    return (new_dataframe)
+
+dd=id_projection_structure('Primary visual area',None,'Primary visual area, layer 6b',263780729)
+print(dd)
+
+#continue the function by creating for a given id a dataframe with in column each hemi (left, right and both) and in row the parameter
+
+#500836840 ; 307297141 ; 503069254 ; 263780729
