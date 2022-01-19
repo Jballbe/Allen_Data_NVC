@@ -27,7 +27,8 @@ def experiment_page (experiment_id) :
 
 def injection_cortical_map_page (experiment_id):
     '''
-    The web page informing about the experiment and the projection volume/density in the Allen Brain Atlas is opened
+    The web page informing showing the projections of the experiment in a cortical map
+
     Parameters
     ----------
     experiment_id : int
@@ -36,6 +37,18 @@ def injection_cortical_map_page (experiment_id):
     link= "https://connectivity.brain-map.org/projection/experiment/cortical_map/"+str(experiment_id)
     webbrowser.open(link)
 #injection_cortical_map_page(113887162)
+
+def connectivity_map (experiment_id) :
+    '''
+    The web page shows in a 3D volume de connectivity (projections) of an experiment
+
+    Parameters
+    ----------
+    experiment_id : int
+    '''
+    link = "https://connectivity.brain-map.org/3d-viewer?v=1&types=STREAMLINE&STREAMLINE=" + str(experiment_id)
+    webbrowser.open(link)
+#connectivity_map(113887162)
 
 def experiments_structure (name_list) :
     '''
@@ -180,21 +193,56 @@ q=stru_tree_id(114512892)
 
 
 def all_structures (): #give all the structures experiments have been done on
+    '''
+    Returns all the structures that have received injections and their associated experiment ids
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    structure_dict : Dictionary
+        Dictionary of all the structures with the number (as values) of experiments that have been done on them
+
+    structure_id_dict : Dictionary
+        Dictionary of all the structures (as keys) with the list of experiment ids (as values) corresponding to the experiments that have been done on those structures
+
+    '''
+
     all_experiments = mcc.get_experiments(dataframe=True)
     ids = list(all_experiments['id'])
     structure_dict = dict()
+    structure_id_dict= dict()
     for i in ids:
         info = all_experiments.loc[i]
         if info['structure_name'] not in structure_dict:
             structure_dict[info['structure_name']] = 1
+            structure_id_dict[info['structure_name']] = []
+            structure_id_dict[info['structure_name']].append(i)
         else:
             structure_dict[info['structure_name']] = structure_dict[info['structure_name']] + 1
-    return structure_dict
+            structure_id_dict[info['structure_name']].append(i)
+    return (structure_dict, structure_id_dict)
 
-a=all_structures()
-#print(a)
+a,b=all_structures()
+
 
 def plot_x_structures (number) : #plot the first x structures with the most experiments (e.g the structures having the most injection experiments)
+    '''
+    Returns an histogram of the structures having the highest number of experiments done on them. The number of structure plotted can be choosen
+
+    Parameters
+    ----------
+    number : int or None
+        Corresponds to the number of structures we want to be plotted
+
+    Returns
+    -------
+    plot
+
+    '''
+
     all_experiments = mcc.get_experiments(dataframe=True)
     ids = list(all_experiments['id'])
     structure_dict = dict()
@@ -208,22 +256,49 @@ def plot_x_structures (number) : #plot the first x structures with the most expe
     keys=structure_dict.keys()
     maxi=dict()
     i=0
-    while i<number:
-        maximum=max(structure_dict,key=structure_dict.get)
-        maxi[maximum]=structure_dict[maximum]
-        structure_dict.pop(maximum)
-        i=i+1
-    print(maxi)
-    title='the first '+str(number)+' structures with the highest number of experiments'
-    plt.bar(maxi.keys(), maxi.values(), width=0.5,align='center')
-    plt.xticks(rotation=10)
-    plt.title(title)
-    plt.show()
-#plot_x_structures(5)
+    if number!=None :
+        while i < number:
+            maximum = max(structure_dict, key=structure_dict.get)
+            maxi[maximum] = structure_dict[maximum]
+            structure_dict.pop(maximum)
+            i = i + 1
+        print(maxi)
+        title = 'the first ' + str(number) + ' structures with the highest number of experiments'
+        plt.bar(maxi.keys(), maxi.values(), width=0.5, align='center')
+        plt.xticks(rotation=10)
+        plt.title(title)
+        plt.show()
+    else :
+        title = 'all the structures according to their number of experiments'
+        plt.bar(keys, values, width=0.5, align='center')
+        plt.xticks(rotation=10)
+        plt.title(title)
+        plt.show()
+
+#plot_x_structures(7)
 
 
 def structure_projection (name_structure_injection, experiment_id, cre) : #cre False or True ; 26min for first run and 1min50 for second run
-    #for a given id, it returns all the sub structures (takes into account the layers) it projects to
+    '''
+    For a given experiment it returns all the targeted structures the structure receiving the injection sends its projections to
+
+    Parameters
+    ----------
+    name_structure_injection : str
+        the structure receiving the injection
+
+    experiment_id : int
+
+    cre : str or False/None
+        Name of the cre-line (should be None ? since we already have a unique experiment chosen)
+
+    Returns
+    -------
+    projection_structures_name : List
+        List of the (sub)structures (takes into account the layers of the structures) receiving the projections in the given experiment (and from the given structure receiving the injection)
+
+    '''
+
     structure_tree = mcc.get_structure_tree()
     structure_injection = structure_tree.get_structures_by_name([name_structure_injection])[0]
     structure_injection_experiments = mcc.get_experiments(cre=cre,injection_structure_ids=[structure_injection['id']])
@@ -251,8 +326,30 @@ def structure_projection (name_structure_injection, experiment_id, cre) : #cre F
 #h=structure_projection('Primary visual area',638314843,None)
 #print(h)
 
-#function which takes into account an injection_structure and a projection_structure (but not the id), if target not specified it returns for all the experiment (x3 for the hemisphere) the projections results for each target_structure
 def injection_projection_structure (name_structure_injection,cre,target_projection) :
+    '''
+    For a given structure receiving the injection and the targeted structure, it returns all the experiment ids and their projections info
+
+    Parameters
+    ----------
+    name_structure_injection : str
+        the structure receiving the injection
+
+    cre : str or False/None
+        Name of the cre-line (should be None ? since we already have a unique experiment chosen)
+
+    target_projection : str or None
+        the targeted structure receiving the projections. No structures can be referenced, in that case we should put None.
+
+    Returns
+    -------
+    unionize : Dataframe
+        Dataframe of all the experiments (and their projection info) having the given structure receiving the injection, and receiving projections in the given targeted structure. Each of those experiments are
+        returned 3 times (or less) because the projections are mesured in the left and right hemsiphere, as well as in both at the same time. If target_projection is None, it returns a Dataframe of all the
+        experiments sending projections to all the different targeted structures that the given structure receiving the injection can send to (not a specific structure)
+
+    '''
+
     structure_tree = mcc.get_structure_tree()
     structure_injection = structure_tree.get_structures_by_name([name_structure_injection])[0]
     structure_injection_experiments = mcc.get_experiments(cre=cre, injection_structure_ids=[structure_injection['id']])
@@ -265,7 +362,7 @@ def injection_projection_structure (name_structure_injection,cre,target_projecti
         print("the projection results of the "+str(len(unionize)/282)+" experiments with an injection done within "+str(name_structure_injection))
     return (unionize)
 
-#k=injection_projection_structure('Primary visual area',None,None)
+#k=injection_projection_structure('Primary visual area',None,'Ectorhinal area/Layer 6a')
 #print(k)
 
 
@@ -273,6 +370,30 @@ def injection_projection_structure (name_structure_injection,cre,target_projecti
 
 
 def id_projection_structure (name_structure_injection,cre,target_projection,experiment_id) :
+    '''
+    For a given experiment id, structure receiving the injection, targeted structure receiving the projections and the cre-line, it returns the projection info of this experiment id sending its projection to the given
+    targeted structure.
+
+    Parameters
+    ----------
+    name_structure_injection : str
+        the structure receiving the injection
+
+    cre : str or None
+        Name of the cre-line (should be None ? since we already have a unique experiment chosen)
+
+    target_projection : str or None
+        the targeted structure receiving the projections. No structures can be referenced, in that case we should put None.
+
+    experiment_id : int
+
+    Returns
+    -------
+    id_projection_info : Dataframe
+        Dataframe of the given experiment id and its projection info. It may returns 3 lines corresponding to the projection measurements in each hemisphere and in the two hemisphere at the same time.
+
+    '''
+
     structure_tree = mcc.get_structure_tree()
     structure_injection = structure_tree.get_structures_by_name([name_structure_injection])[0]
     structure_injection_experiments = mcc.get_experiments(cre=cre, injection_structure_ids=[structure_injection['id']])
@@ -283,14 +404,35 @@ def id_projection_structure (name_structure_injection,cre,target_projection,expe
     for i in row_numbers:
         if unionize.loc[i]["experiment_id"] == experiment_id:
             row_list.append(i)
-    print(row_list)
-    print(row_list[-1])
     new_dataframe = unionize[row_list[0]:row_list[-1]+1]
-    return (new_dataframe)
+    a = list(new_dataframe.index)
+    to_change_id = []
+    to_change_hemi = []
+    for i in a:
+        if new_dataframe.loc[i]['hemisphere_id'] == 1:
+            to_change_id.append(i)
+            to_change_hemi.append('left hemisphere')
+        else:
+            if new_dataframe.loc[i]['hemisphere_id'] == 2:
+                to_change_id.append(i)
+                to_change_hemi.append('right hemisphere')
+            else:
+                to_change_id.append(i)
+                to_change_hemi.append('both hemispheres')
+    if len(to_change_id) == 3:
+        new = new_dataframe.rename(index={to_change_id[0]: to_change_hemi[0], to_change_id[1]: to_change_hemi[1],
+                                  to_change_id[2]: to_change_hemi[2]})
+    else:
+        if len(to_change_id) == 2:
+            new = new_dataframe.rename(index={to_change_id[0]: to_change_hemi[0], to_change_id[1]: to_change_hemi[1]})
+        else:
+            new = new_dataframe.rename(index={to_change_id[0]: to_change_hemi[0]})
+    #print('Experiment id ' + str(experiment_id) + ' projection info:' + '\n', new.transpose())
+    id_projection_info=new.transpose()
+    return (id_projection_info)
 
 dd=id_projection_structure('Primary visual area',None,'Primary visual area, layer 6b',263780729)
-print(dd)
+print(dd.to_string())
 
-#continue the function by creating for a given id a dataframe with in column each hemi (left, right and both) and in row the parameter
 
 #500836840 ; 307297141 ; 503069254 ; 263780729
