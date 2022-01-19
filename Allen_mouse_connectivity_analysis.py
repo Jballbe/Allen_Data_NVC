@@ -431,8 +431,8 @@ def id_projection_structure (name_structure_injection,cre,target_projection,expe
     id_projection_info=new.transpose()
     return (id_projection_info)
 
-dd=id_projection_structure('Primary visual area',None,'Primary visual area, layer 6b',263780729)
-print(dd.to_string())
+#dd=id_projection_structure('Primary visual area',None,'Primary visual area, layer 6b',263780729)
+#print(dd.to_string())
 
 
 #500836840 ; 307297141 ; 503069254 ; 263780729
