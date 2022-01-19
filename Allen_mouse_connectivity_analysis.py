@@ -431,8 +431,13 @@ def id_projection_structure (name_structure_injection,cre,target_projection,expe
     id_projection_info=new.transpose()
     return (id_projection_info)
 
-#dd=id_projection_structure('Primary visual area',None,'Primary visual area, layer 6b',263780729)
-#print(dd.to_string())
+dd=id_projection_structure('Primary visual area',None,'Primary visual area, layer 6b',263780729)
+print(dd.to_string())
 
 
 #500836840 ; 307297141 ; 503069254 ; 263780729
+#VISp
+
+
+#[385, 593, 821, 721, 778, 33, 305] = ['VISp', 'VISp1', 'VISp2/3', 'VISp4', 'VISp5', 'VISp6a', 'VISp6b']
+#there is only experiments injections in 385/VISp, there is no indication (when we use the acronym_ids) of any experiment done its substructures ('VISp', 'VISp1', 'VISp2/3', 'VISp4', 'VISp5', 'VISp6a', 'VISp6b'), everything is referenced as VISp
