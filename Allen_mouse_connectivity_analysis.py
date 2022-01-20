@@ -54,7 +54,8 @@ def experiment_info (experiment_id, structure_name) :
     structure_tree = mcc.get_structure_tree()
     all_structures = structure_tree.get_structures_by_name(structure_name)[0]
     experiments = mcc.get_experiments(dataframe=True, injection_structure_ids=[all_structures['id']])
-    id_info=experiments.loc[experiment_id]
+    c=experiments.loc[experiment_id]
+    id_info=pd.DataFrame(c)
     return(id_info)
 
 def experiments_structure (name_list) :
@@ -397,7 +398,10 @@ def id_projection_structure (name_structure_injection,cre,target_projection,expe
     Returns
     -------
     id_projection_info : Dataframe
-        Dataframe of the given experiment id and its projection info. It may returns 3 lines corresponding to the projection measurements in each hemisphere and in the two hemisphere at the same time.
+        Dataframe of the given experiment id and its projection info. It may returns 3 lines corresponding to the projection measurements in each hemisphere and in the two hemisphere at the same time. Without injection info
+
+    id_projection_injection_info : Dataframe
+        Dataframe of the given experiment id and its projection info. It may returns 3 lines corresponding to the projection measurements in each hemisphere and in the two hemisphere at the same time. With injection info.
 
     '''
 
@@ -429,25 +433,40 @@ def id_projection_structure (name_structure_injection,cre,target_projection,expe
     if len(to_change_id) == 3:
         new = new_dataframe.rename(index={to_change_id[0]: to_change_hemi[0], to_change_id[1]: to_change_hemi[1],
                                   to_change_id[2]: to_change_hemi[2]})
+        a = experiment_info(experiment_id, [name_structure_injection])
+        values = list(a[experiment_id].loc["injection_volume":'injection_z'])
+        rows = ["injection_volume", "injection_x", "injection_y", "injection_z"]
+        col = [to_change_hemi[0], to_change_hemi[1], to_change_hemi[2]]
+        v = [values, values, values]
+        new_mini = pd.DataFrame(v, columns=rows, index=col)
     else:
         if len(to_change_id) == 2:
             new = new_dataframe.rename(index={to_change_id[0]: to_change_hemi[0], to_change_id[1]: to_change_hemi[1]})
+            a = experiment_info(experiment_id, [name_structure_injection])
+            values = list(a[experiment_id].loc["injection_volume":'injection_z'])
+            rows = ["injection_volume", "injection_x", "injection_y", "injection_z"]
+            col = [to_change_hemi[0], to_change_hemi[1]]
+            v = [values, values]
+            new_mini = pd.DataFrame(v, columns=rows, index=col)
         else:
             new = new_dataframe.rename(index={to_change_id[0]: to_change_hemi[0]})
+            a = experiment_info(experiment_id, [name_structure_injection])
+            values = list(a[experiment_id].loc["injection_volume":'injection_z'])
+            rows = ["injection_volume", "injection_x", "injection_y", "injection_z"]
+            col = [to_change_hemi[0]]
+            v = [values]
+            new_mini = pd.DataFrame(v, columns=rows, index=col)
     #print('Experiment id ' + str(experiment_id) + ' projection info:' + '\n', new.transpose())
-    id_projection_info=new.transpose()
-    return (id_projection_info)
+    id_projection_info=new.transpose() #without injection info
+    id_projection_injection_info=id_projection_info.append(new_mini.transpose()) #with injection info
+    return (id_projection_info,id_projection_injection_info)
 
-dd=id_projection_structure('Primary visual area',None,'Primary visual area, layer 6b',263780729)
-#print(dd.to_string())
+#dd,cc=id_projection_structure('Primary visual area',None,'Primary visual area, layer 6b',263780729)
+#print(cc.to_string())
 
 
 #500836840 ; 307297141 ; 503069254 ; 263780729
 #VISp
 
 
-
-
-a=experiment_info(263780729,["Primary visual area"])
-#print(a.loc['injection_volume':'injection_z'])
 
