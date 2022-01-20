@@ -4,6 +4,9 @@ from allensdk.api.queries.ontologies_api import OntologiesApi
 import webbrowser
 import numpy as np
 import matplotlib.pyplot as plt
+import warnings
+warnings.filterwarnings('ignore')
+
 
 
 mcc = MouseConnectivityCache()
@@ -57,6 +60,7 @@ def experiment_info (experiment_id, structure_name) :
     c=experiments.loc[experiment_id]
     id_info=pd.DataFrame(c)
     return(id_info)
+
 
 def experiments_structure (name_list) :
     '''
@@ -374,7 +378,128 @@ def injection_projection_structure (name_structure_injection,cre,target_projecti
 #print(k)
 
 
-#function which returns, for a given id (and injection_structure) and projection_structure a table with volume_porjection (as well as injection volume) for each hemisphere
+def density_volume_minimum (experiment_id,name_structure_injection,parameters,minimal_value) :
+    '''
+    For a given experiment id and minimal values for some projection parameters it returns a table with the different targeted structures by the projections concerned
+
+    Parameters
+    ----------
+    experiment_id : int
+
+    name_structure_injection : str
+
+    parameters : List
+        List of parameters that will have a minimal value (in order to take into account only the targeted structures having those parameters at an higher value). Can take : "projection_volume", "projection_density",
+        "volume" and "normalized_projection_volume". parameters can take 1 or 2 parameters.
+
+    minimal_value : List
+        List of values in float, corresponds to the minimal values of the concerned parameters the targeted structures can have in order to be returned
+
+    Returns
+    -------
+    info : Dataframe
+        Dataframe of the targeted structures which have parameters at a certain value
+
+    '''
+
+    structure_tree = mcc.get_structure_tree()
+    structure_injection = structure_tree.get_structures_by_name([name_structure_injection])[0]
+    structure_injection_experiments = mcc.get_experiments(injection_structure_ids=[structure_injection['id']])
+    unionizee = mcc.get_structure_unionizes([e['id'] for e in structure_injection_experiments], is_injection=False,
+                                           include_descendants=True)
+    u=unionizee.set_index('experiment_id')
+    unionize=u.loc[experiment_id]
+    print(unionize)
+    if len(parameters) == 1 :
+        if parameters[0] == 'projection_volume' :
+            proj_volume=unionize[unionize.projection_volume > minimal_value[0]]
+            info=pd.DataFrame(structure_tree.nodes(proj_volume.structure_id))
+            return(info)
+        else :
+            if parameters[0] == 'projection_density' :
+                proj_density = unionize[unionize.projection_density > minimal_value[0]]
+                info = pd.DataFrame(structure_tree.nodes(proj_density.structure_id))
+                return (info)
+            else :
+                if parameters[0] == "volume" :
+                    vol=unionize[unionize.volume > minimal_value[0]]
+                    info = pd.DataFrame(structure_tree.nodes(vol.structure_id))
+                    return (info)
+                else :
+                    norm = unionize[unionize.normalized_projection_volume>minimal_value[0]]
+                    info = pd.DataFrame(structure_tree.nodes(norm.structure_id))
+                    return (info)
+    else :
+        if len(parameters) == 2 :
+            if parameters[0] == 'projection_volume':
+                proj_volume = unionize[unionize.projection_volume > minimal_value[0]]
+                if parameters[1] == 'projection_density' :
+                    proj_vol_dens = proj_volume[proj_volume.projection_density >minimal_value[1]]
+                    info = pd.DataFrame(structure_tree.nodes(proj_vol_dens.structure_id))
+                    return(info)
+                else :
+                    if parameters[1] == "volume" :
+                        vol_vol = proj_volume[proj_volume.volume > minimal_value[1]]
+                        info = pd.DataFrame(structure_tree.nodes(vol_vol.structure_id))
+                        return (info)
+                    else :
+                        proj_vol_norm = proj_volume[proj_volume.normalized_projection_volume > minimal_value[1]]
+                        info = pd.DataFrame(structure_tree.nodes(proj_vol_norm.structure_id))
+                        return (info)
+            else :
+                if parameters[0] == 'projection_density' :
+                    proj_density = unionize[unionize.projection_density > minimal_value[0]]
+                    if parameters[1] == 'projection_volume' :
+                        proj_dens_vol = proj_density[proj_density.projection_volume > minimal_value[1]]
+                        info = pd.DataFrame(structure_tree.nodes(proj_dens_vol.structure_id))
+                        return (info)
+                    else :
+                        if parameters[1] == "volume" :
+                            proj_dens_vol = proj_density[proj_density.volume > minimal_value[1]]
+                            info = pd.DataFrame(structure_tree.nodes(proj_dens_vol.structure_id))
+                            return (info)
+                        else :
+                            proj_dens_norm=proj_density[proj_density.normalized_projection_volume > minimal_value[1]]
+                            info = pd.DataFrame(structure_tree.nodes(proj_dens_norm.structure_id))
+                            return (info)
+                else :
+                    if parameters[0] == 'volume' :
+                        vol=unionize[unionize.volume > minimal_value[0]]
+                        if parameters[1] == 'projection_volume' :
+                            vol_proj_vol = vol[vol.projection_volume>minimal_value[1]]
+                            info=pd.DataFrame(structure_tree.nodes(vol_proj_vol.structure_id))
+                            return (info)
+                        else:
+                            if parameters[1] == "projection_density" :
+                                vol_dens=vol[vol.projection_density>minimal_value[1]]
+                                info = pd.DataFrame(structure_tree.nodes(vol_dens.structure_id))
+                                return(info)
+                            else :
+                                vol_norm=vol[vol.normalized_projection_volume>minimal_value[1]]
+                                info = pd.DataFrame(structure_tree.nodes(vol_norm.structure_id))
+                                return (info)
+                    else :
+                        if parameters[0] == "normalized_projection_volume" :
+                            normalized_vol = unionize[unionize.normalized_projection_volume> minimal_value[0]]
+                            if parameters[1] == "projection_volume" :
+                                norm_proj_vol=normalized_vol[normalized_vol.projection_volume>minimal_value[1]]
+                                info = pd.DataFrame(structure_tree.nodes(norm_proj_vol.structure_id))
+                                return (info)
+                            else :
+                                if parameters[1] == "projection_density" :
+                                    norm_proj_dens = normalized_vol[normalized_vol.projection_density>minimal_value[1]]
+                                    info = pd.DataFrame(structure_tree.nodes(norm_proj_dens.structure_id))
+                                    return (info)
+                                else :
+                                    norm_vol = normalized_vol[normalized_vol.volume > minimal_value[1]]
+                                    info = pd.DataFrame(structure_tree.nodes(norm_vol.structure_id))
+                                    return (info)
+        else :
+            print ("too many info in parameters, this list can only takes 1 or 2 parameters at the time")
+            return ([])
+
+#y=density_volume_minimum(503069254,'Primary visual area',['normalized_projection_volume',"projection_density"],[0.05,0.05]).to_string()
+#in order to access the projection values of those targeted structure for the given experiment id, we can use then the id_projection_structure function
 
 
 def id_projection_structure (name_structure_injection,cre,target_projection,experiment_id) :
@@ -461,12 +586,135 @@ def id_projection_structure (name_structure_injection,cre,target_projection,expe
     id_projection_injection_info=id_projection_info.append(new_mini.transpose()) #with injection info
     return (id_projection_info,id_projection_injection_info)
 
-#dd,cc=id_projection_structure('Primary visual area',None,'Primary visual area, layer 6b',263780729)
+#dd,cc=id_projection_structure('Primary visual area',None,'Primary visual area, layer 6b',503069254)
 #print(cc.to_string())
+
+def structure_name_info (structure_name) :
+    '''
+    Returns name info (id, descendants, acronym) for each structure and specifics sructures
+
+    Parameters
+    ----------
+    structure_name : str
+        name of a specific structure we want name info on
+
+    Returns
+    -------
+    structure_info : Dataframe
+        table of all the structures with their id, acronym, descendants ids and acronyms
+
+    structure : Dataframe
+        table for the given name structure with its id, acronym and descendants ids and acronyms
+
+    '''
+
+    all_experiments = mcc.get_experiments(dataframe=True)  # a dataframe
+    row = all_experiments.index
+    structure_tree = mcc.get_structure_tree()
+    ia_map = structure_tree.get_id_acronym_map()
+    liste_structures = []
+    liste_structure_ids = []
+    liste_structure_acronym = []
+    liste_descendants_ids = []
+    liste_descendants_acro = []
+    for i in row:
+        if all_experiments.loc[i]["structure_name"] not in liste_structures:
+            liste_structures.append(all_experiments.loc[i]["structure_name"])
+            liste_structure_ids.append(all_experiments.loc[i]['structure_id'])
+            liste_structure_acronym.append(all_experiments.loc[i]["structure_abbrev"])
+            desc = structure_tree.descendant_ids([ia_map[all_experiments.loc[i]["structure_abbrev"]]])[0]
+            liste_descendants_ids.append(desc)
+            desc_acro = []
+            for j in desc:
+                desc_acronyms = structure_tree.get_structures_by_id([j])[0]
+                desc_acro.append(desc_acronyms['acronym'])
+            liste_descendants_acro.append(desc_acro)
+    structure_info = pd.DataFrame(index=liste_structures,
+                                  columns=["id", "structure acronym", "descendant_acronyms", "descendant_ids"])
+    l = np.arange(0, len(liste_structure_ids))
+    structure_info["id"] = liste_structure_ids
+    structure_info["structure acronym"] = liste_structure_acronym
+    structure_info["descendant_ids"] = liste_descendants_ids
+    structure_info["descendant_acronyms"] = liste_descendants_acro
+    structure=structure_info.loc[structure_name]
+    return (structure_info,structure)
+
+m,n=structure_name_info("Primary visual area") #see m for all the structures (218)
+#g=n.loc['descendant_ids'][1:]
+
+def plot_matrix (name_structure_injection, targeted_structure_ids, projection_parameter, experiment_id_list, cre,hemisphere) :
+    '''
+    Returns a plotted matrix of the level of projection volume or density in a structures according to the experiments/injection structure
+
+    Parameters
+    ----------
+    name_structure_injection : str
+
+    targeted_structure_ids : List of int
+        List of the structure ids for which we want to see the level of projection density or volume they have
+
+    projection_parameter : str
+        Can be projection_density or projection_volume (for now)
+
+    experiment_id_list : List or None
+        if List, it's a list of the experiment ids (corresponding to the injection structure)
+
+    cre : str, True, False, None
+        name of the cre line
+
+    hemisphere : List
+        List which can contain 1 (left), 2 (right), and/or 3 (both hemispheres)
+
+    Returns
+    -------
+    Plot
+
+    '''
+
+    structure_tree = mcc.get_structure_tree()
+    if experiment_id_list == None :
+        structure_injection = structure_tree.get_structures_by_name([name_structure_injection])[0]
+        structure_injection_experiments = mcc.get_experiments(cre=cre,injection_structure_ids=[structure_injection['id']])
+        experiment_ids = [e['id'] for e in structure_injection_experiments]
+    else :
+        experiment_ids = experiment_id_list
+    # matrix
+    pm = mcc.get_projection_matrix(experiment_ids=experiment_ids,
+                                   projection_structure_ids=targeted_structure_ids,
+                                   hemisphere_ids=hemisphere,  # right hemisphere, ipsilateral
+                                   parameter=projection_parameter)
+    # plot :
+    row_labels = pm['rows']  # these are just experiment ids
+    column_labels = [c['label'] for c in pm['columns']]
+    matrix = pm['matrix']
+    title='injection in the '+str(name_structure_injection)
+    fig, ax = plt.subplots(figsize=(15, 15))
+    heatmap = ax.pcolor(matrix, cmap=plt.cm.afmhot)
+
+    # put the major ticks at the middle of each cell
+    ax.set_xticks(np.arange(matrix.shape[1]) + 0.5, minor=False)
+    ax.set_yticks(np.arange(matrix.shape[0]) + 0.5, minor=False)
+
+    ax.set_xlim([0, matrix.shape[1]])
+    ax.set_ylim([0, matrix.shape[0]])
+
+    # want a more natural, table-like display
+    ax.invert_yaxis()
+    ax.xaxis.tick_top()
+
+    ax.set_xticklabels(column_labels, minor=False)
+    ax.set_yticklabels(row_labels, minor=False)
+    plt.title(title)
+    plt.show()
+
+#liste=[263780729]
+#plot_matrix('Primary visual area',g,'projection_volume',None,False,[1,2])
+
 
 
 #500836840 ; 307297141 ; 503069254 ; 263780729
-#VISp
+
+
 
 
 
