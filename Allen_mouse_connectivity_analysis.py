@@ -23,7 +23,7 @@ def experiment_page (experiment_id) :
 
     link = "https://connectivity.brain-map.org/projection/experiment/" + str(experiment_id)
     webbrowser.open(link)
-#experiment_page(113887162)
+#experiment_page(263780729)
 
 def injection_cortical_map_page (experiment_id):
     '''
@@ -49,6 +49,13 @@ def connectivity_map (experiment_id) :
     link = "https://connectivity.brain-map.org/3d-viewer?v=1&types=STREAMLINE&STREAMLINE=" + str(experiment_id)
     webbrowser.open(link)
 #connectivity_map(113887162)
+
+def experiment_info (experiment_id, structure_name) :
+    structure_tree = mcc.get_structure_tree()
+    all_structures = structure_tree.get_structures_by_name(structure_name)[0]
+    experiments = mcc.get_experiments(dataframe=True, injection_structure_ids=[all_structures['id']])
+    id_info=experiments.loc[experiment_id]
+    return(id_info)
 
 def experiments_structure (name_list) :
     '''
@@ -432,12 +439,15 @@ def id_projection_structure (name_structure_injection,cre,target_projection,expe
     return (id_projection_info)
 
 dd=id_projection_structure('Primary visual area',None,'Primary visual area, layer 6b',263780729)
-print(dd.to_string())
+#print(dd.to_string())
 
 
 #500836840 ; 307297141 ; 503069254 ; 263780729
 #VISp
 
 
-#[385, 593, 821, 721, 778, 33, 305] = ['VISp', 'VISp1', 'VISp2/3', 'VISp4', 'VISp5', 'VISp6a', 'VISp6b']
-#there is only experiments injections in 385/VISp, there is no indication (when we use the acronym_ids) of any experiment done its substructures ('VISp', 'VISp1', 'VISp2/3', 'VISp4', 'VISp5', 'VISp6a', 'VISp6b'), everything is referenced as VISp
+
+
+a=experiment_info(263780729,["Primary visual area"])
+#print(a.loc['injection_volume':'injection_z'])
+
