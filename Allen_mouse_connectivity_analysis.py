@@ -28,7 +28,7 @@ def experiment_page (experiment_id) :
     webbrowser.open(link)
 #experiment_page(263780729)
 
-def injection_cortical_map_page (experiment_id):
+def cortical_map_page (experiment_id):
     '''
     The web page informing showing the projections of the experiment in a cortical map
 
@@ -39,7 +39,7 @@ def injection_cortical_map_page (experiment_id):
 
     link= "https://connectivity.brain-map.org/projection/experiment/cortical_map/"+str(experiment_id)
     webbrowser.open(link)
-#injection_cortical_map_page(113887162)
+#cortical_map_page(263780729)
 
 def connectivity_map (experiment_id) :
     '''
@@ -51,18 +51,37 @@ def connectivity_map (experiment_id) :
     '''
     link = "https://connectivity.brain-map.org/3d-viewer?v=1&types=STREAMLINE&STREAMLINE=" + str(experiment_id)
     webbrowser.open(link)
-#connectivity_map(113887162)
+#connectivity_map(263780729)
 
 def experiment_info (experiment_id, structure_name) :
+    '''
+    General info of the given experiment (associated to a specific structure)
+
+    Parameters
+    ----------
+    experiment_id : int
+
+    structure_name : str
+        should be the structure related within the experiment
+
+    Returns
+    ----------
+    id_info : Dataframe
+        Table of the general info of the experiment
+
+
+    '''
+
     structure_tree = mcc.get_structure_tree()
-    all_structures = structure_tree.get_structures_by_name(structure_name)[0]
+    all_structures = structure_tree.get_structures_by_name([structure_name])[0]
     experiments = mcc.get_experiments(dataframe=True, injection_structure_ids=[all_structures['id']])
     c=experiments.loc[experiment_id]
     id_info=pd.DataFrame(c)
     return(id_info)
 
+#print(experiment_info(263780729,'Primary visual area'))
 
-def experiments_structure (name_list) :
+def experiments_structure (structures) :
     '''
     Returns Dataframes containing for each structure all its experiments and its info ('gender', 'injection_structures', 'injection_volume', 'injection_x',
        'injection_y', 'injection_z', 'product_id', 'specimen_name', 'strain',
@@ -71,7 +90,7 @@ def experiments_structure (name_list) :
 
     Parameters
     ----------
-    name_list : list
+    structures : list
         List of the structure names we want to take into account (e.g. ['Primary visual area','Hypothalamus'])
 
     Returns
@@ -81,17 +100,17 @@ def experiments_structure (name_list) :
     '''
 
     structure_tree = mcc.get_structure_tree()
-    all_structures=structure_tree.get_structures_by_name(name_list)
+    all_structures=structure_tree.get_structures_by_name(structures)
     liste=[]
     for i in all_structures :
         experiments = mcc.get_experiments(dataframe=True, injection_structure_ids=[i['id']]) #injection_structure_ids is here to take into account only the ids that are in the given structure
         liste.append(experiments)
     return liste
-s=experiments_structure(['Primary visual area']) #to read a line we have to put within the loc the id number instead of the number of the line
+#s=experiments_structure(['Primary visual area']) #to read a line we have to put within the loc the id number instead of the number of the line
 #print(s[0].loc[156545918])
 
 
-def cre_experiments (name, cre_type) :
+def cre_experiments (structure, cre_type) :
     '''
     Returns Dataframes containing for a given structure and cre line all its experiments and its info ('gender', 'injection_structures', 'injection_volume', 'injection_x',
        'injection_y', 'injection_z', 'product_id', 'specimen_name', 'strain',
@@ -100,11 +119,11 @@ def cre_experiments (name, cre_type) :
 
     Parameters
     ----------
-    name : str
+    structure : str
         name of the structure (e.g. 'Primary visual area','Hypothalamus')
 
-    cre_type : str
-        name of the cre-line
+    cre_type : str, True or False or None
+        name of the cre-line. If True it takes into account all the experiments having a cre-line, and False takes into account the one which don't have a cre-line. None takes all the experiments having a cre line or not.
 
     Returns
     -------
@@ -113,14 +132,15 @@ def cre_experiments (name, cre_type) :
     '''
 
     structure_tree = mcc.get_structure_tree()
-    expe = structure_tree.get_structures_by_name([name])[0]
+    expe = structure_tree.get_structures_by_name([structure])[0]
     cre_experiments = mcc.get_experiments(dataframe=True, cre=cre_type, injection_structure_ids=[expe['id']])  # returns only experiments cre line postives
     return cre_experiments
 j=cre_experiments('Primary visual area',['Cux2-IRES-Cre']) #(e.g. 'Rbp4-Cre_KL100')
+#print(j)
 #print(j.loc[263780729])
 
 
-def stru_tree_name (name) :
+def structure_tree (structure) :
     '''
     Returns general info of the given structure and its list of structure_set_ids, i.e. ids of lists giving specific and diverse info in wichi the given structure is related
 
@@ -140,12 +160,13 @@ def stru_tree_name (name) :
 
     '''
     structure_tree = mcc.get_structure_tree()
-    structures = structure_tree.get_structures_by_name([name])
+    structures = structure_tree.get_structures_by_name([structure])
     a=pd.DataFrame(structures)
     ids = a.loc[0]['structure_set_ids']
     structure_info=a.loc[0]
     return (ids,structure_info)
-r,a=stru_tree_name('Primary visual area')
+r,a=structure_tree('Primary visual area')
+
 
 
 
@@ -176,6 +197,7 @@ def structure_set_id_info (ids) : # for the structure_set_ids of a given structu
         liste.append(b.loc[index])
     return (list(liste))
 d=structure_set_id_info(r)
+print(d)
 o=[396673091]
 #print(structure_set_id_info(o))
 
@@ -639,7 +661,7 @@ def structure_name_info (structure_name) :
     structure=structure_info.loc[structure_name]
     return (structure_info,structure)
 
-m,n=structure_name_info("Primary visual area") #see m for all the structures (218)
+#m,n=structure_name_info("Primary visual area") #see m for all the structures (218)
 #g=n.loc['descendant_ids'][1:]
 
 def plot_matrix (name_structure_injection, targeted_structure_ids, projection_parameter, experiment_id_list, cre,hemisphere) :
