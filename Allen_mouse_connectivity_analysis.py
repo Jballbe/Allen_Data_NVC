@@ -49,9 +49,25 @@ def connectivity_map (experiment_id) :
     ----------
     experiment_id : int
     '''
+
     link = "https://connectivity.brain-map.org/3d-viewer?v=1&types=STREAMLINE&STREAMLINE=" + str(experiment_id)
     webbrowser.open(link)
 #connectivity_map(263780729)
+
+def cre_line_page (cre_line_name) :
+    '''
+    The web page shows the list of transgenic characterization experiences done with the given cre line name
+
+    Parameters
+    ----------
+    cre_line_name : str
+    '''
+    
+    a='https://connectivity.brain-map.org/transgenic/search?page_num=0&page_size=16&no_paging=false&exact_match=false&brain=true&retina=true&search_term='
+    b='&search_type=line'
+    link=a+cre_line_name+b
+    webbrowser.open(link)
+#cre_line_page('Penk-IRES2-Cre-neo')
 
 def experiment_info (experiment_id, structure_name) :
     '''
@@ -779,6 +795,8 @@ def plot_matrix (name_injection_structure, targeted_structure_ids, projection_pa
 #500836840 ; 307297141 ; 503069254 ; 263780729
 
 
+a=cre_lines(None)
+#b=cre_lines('Gad2-IRES-Cre')
 
 
 
