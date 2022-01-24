@@ -109,6 +109,42 @@ def experiments_structure (structures) :
 #s=experiments_structure(['Primary visual area']) #to read a line we have to put within the loc the id number instead of the number of the line
 #print(s[0].loc[156545918])
 
+def cre_lines (cre_line_name) :
+    '''
+    Returns all the cre lines and the associated experiment ids or, if the name of a specific cre line is referenced, it returns its associated experiment ids
+
+    Parameters
+    ----------
+    cre_line_name : str
+        name of a the cre line
+
+    Returns
+    -------
+    dico_id : Dictionary
+        Dictionary of all the cre lines and their experiment ids
+
+    ids : List
+        List of the experiment ids using the specific cre line mentioned
+
+    '''
+
+    all_experiments = mcc.get_experiments(dataframe=True)  # a dataframe
+    dico_id = dict()
+    dico_number = dict()
+    for i in all_experiments.index:
+        if all_experiments.loc[i]['transgenic_line'] not in dico_number:
+            dico_number[all_experiments.loc[i]['transgenic_line']] = 1
+            dico_id[all_experiments.loc[i]['transgenic_line']] = []
+            dico_id[all_experiments.loc[i]['transgenic_line']].append(i)
+
+        else:
+            dico_number[all_experiments.loc[i]['transgenic_line']] = dico_number[ all_experiments.loc[i]['transgenic_line']] + 1
+            dico_id[all_experiments.loc[i]['transgenic_line']].append(i)
+    if cre_line_name == None :
+        return (dico_id)
+    else :
+        ids=dico_id[cre_line_name]
+        return(ids)
 
 def cre_experiments (structure, cre_type) :
     '''
@@ -315,6 +351,7 @@ def plot_x_structures (number) : #plot the first x structures with the most expe
 
 
 def structure_projection (name_injection_structure, experiment_id, cre) : #cre False or True ; 26min for first run and 1min50 for second run
+    #add the is_injection parameter
     '''
     For a given experiment it returns all the targeted structures the structure receiving the injection sends its projections to
 
@@ -360,6 +397,8 @@ def structure_projection (name_injection_structure, experiment_id, cre) : #cre F
     return (projection_structures_name)
 
 #h=structure_projection('Primary visual area',263780729,None)
+#print(h)
+#print(len(h))
 
 
 def injection_projection_structure (name_injection_structure,cre,target_projection) :
@@ -738,6 +777,7 @@ def plot_matrix (name_injection_structure, targeted_structure_ids, projection_pa
 
 
 #500836840 ; 307297141 ; 503069254 ; 263780729
+
 
 
 
