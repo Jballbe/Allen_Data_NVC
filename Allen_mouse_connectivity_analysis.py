@@ -56,13 +56,13 @@ def connectivity_map (experiment_id) :
 
 def cre_line_page (cre_line_name) :
     '''
-    The web page shows the list of transgenic characterization experiences done with the given cre line name
+    The web page shows the list of transgenic characterization experiences done for the given cre line name
 
     Parameters
     ----------
     cre_line_name : str
     '''
-    
+
     a='https://connectivity.brain-map.org/transgenic/search?page_num=0&page_size=16&no_paging=false&exact_match=false&brain=true&retina=true&search_term='
     b='&search_type=line'
     link=a+cre_line_name+b
@@ -127,7 +127,7 @@ def experiments_structure (structures) :
 
 def cre_lines (cre_line_name) :
     '''
-    Returns all the cre lines and the associated experiment ids or, if the name of a specific cre line is referenced, it returns its associated experiment ids
+    Returns all the cre lines and their associated experiment ids or, if the name of a specific cre line is referenced, it returns its associated experiment ids
 
     Parameters
     ----------
@@ -156,11 +156,43 @@ def cre_lines (cre_line_name) :
         else:
             dico_number[all_experiments.loc[i]['transgenic_line']] = dico_number[ all_experiments.loc[i]['transgenic_line']] + 1
             dico_id[all_experiments.loc[i]['transgenic_line']].append(i)
-    if cre_line_name == None :
+    if cre_line_name == 'No' :
         return (dico_id)
     else :
         ids=dico_id[cre_line_name]
         return(ids)
+
+def cre_line_summary (cre_line_name) :
+    '''
+    For a given cre line name it returns its expression pattern. If no cre line name specified it returns an expression pattern summary for all the cre lines.
+
+    Parameters
+    ----------
+    cre_line_name : str
+        can be a cre line name or "No" if we don't want to specify any cre line name have all the expression patterns.
+
+    Returns
+    -------
+    data : Dataframe #à vérifier
+        Table of all the cre lines and their expression pattern
+
+    expression_summary : str
+        expression pattern of the given cre line name
+
+    '''
+
+    data1 = pd.read_csv(
+        "C:/Users/marga/Documents/DOCTORAT/ALLEN Institute/github sdk/Allen_Data_NVC/trangenic_lines.csv", sep=';',header=[0])
+    data = data1.set_index('cre_lines')
+    lines = data.index
+    if cre_line_name =="No" :
+        return(data)
+    else :
+        a = list(data.loc[cre_line_name])
+        expression_summary = a[0]
+        return(expression_summary)
+
+#print(cre_line_summary('Cux2-CreERT2'))
 
 def cre_experiments (structure, cre_type) :
     '''
@@ -217,9 +249,7 @@ def structure_tree (structure) :
     ids = a.loc[0]['structure_set_ids']
     structure_info=a.loc[0]
     return (ids,structure_info)
-r,a=structure_tree('Primary visual area')
-
-
+#r,a=structure_tree('Primary visual area')
 
 
 def structure_set_id_info (ids) : # for the structure_set_ids of a given structure , we match the properties of those ids , can take one id, but it has to be in list type
@@ -795,8 +825,11 @@ def plot_matrix (name_injection_structure, targeted_structure_ids, projection_pa
 #500836840 ; 307297141 ; 503069254 ; 263780729
 
 
-a=cre_lines(None)
-#b=cre_lines('Gad2-IRES-Cre')
+
+
+
+
+
 
 
 
