@@ -160,7 +160,7 @@ def cre_line_summary (cre_line_name) :
 
 def injection_structure_cre_line (injection_structure_name) :
     '''
-    For a given structure it returns all the cre-lines that have been injected in this structure, as well as all the experiment ids associated to this structures and the different cre lines
+    For a given structure it returns all the cre-lines that have been injected in this structure, as well as all the experiment ids associated to this structure and the different cre lines
 
     Parameters
     ----------
