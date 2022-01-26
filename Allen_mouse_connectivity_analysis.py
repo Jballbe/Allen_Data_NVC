@@ -124,6 +124,73 @@ def experiments_structure (structures) :
     return liste
 #s=experiments_structure(['Primary visual area']) #to read a line we have to put within the loc the id number instead of the number of the line
 #print(s[0].loc[156545918])
+#print(s[0]["transgenic_line"])
+
+def cre_line_summary (cre_line_name) :
+    '''
+    For a given cre line name it returns its expression pattern. If no cre line name specified it returns an expression pattern summary for all the cre lines.
+
+    Parameters
+    ----------
+    cre_line_name : str
+        can be a cre line name or "No" if we don't want to specify any cre line name have all the expression patterns.
+
+    Returns
+    -------
+    data : Dataframe
+        Table of all the cre lines and their expression pattern
+
+    expression_summary : str
+        expression pattern of the given cre line name
+
+    '''
+
+    data1 = pd.read_csv(
+        "C:/Users/marga/Documents/DOCTORAT/ALLEN Institute/github sdk/Allen_Data_NVC/trangenic_lines.csv", sep=';',header=[0])
+    data = data1.set_index('cre_lines')
+    lines = data.index
+    if cre_line_name =="No" :
+        return(data)
+    else :
+        a = list(data.loc[cre_line_name])
+        expression_summary = a[0]
+        return(expression_summary)
+
+#print(cre_line_summary('Cux2-CreERT2'))
+
+def injection_structure_cre_line (injection_structure_name) :
+    '''
+    For a given structure it returns all the cre-lines that have been injected in this structure, as well as all the experiment ids associated to this structures and the different cre lines
+
+    Parameters
+    ----------
+    injection_structure_name : str
+        name of the structure receiving the tracer injection.
+
+    Returns
+    -------
+    dico : Dictionary
+        Dictionary with the different cre lines as the keys and their associated experiment ids as a list of values
+
+    '''
+
+    structure_info=experiments_structure([injection_structure_name])
+    ids=structure_info[0].index
+    dico=dict()
+    for i in ids :
+        if structure_info[0].loc[i]['transgenic_line'] not in dico :
+            dico[structure_info[0].loc[i]['transgenic_line']]=[]
+            dico[structure_info[0].loc[i]['transgenic_line']].append(i)
+        else:
+            dico[structure_info[0].loc[i]['transgenic_line']].append(i)
+    return(dico)
+
+
+a=injection_structure_cre_line('Primary visual area')
+print(a)
+#print(a.keys())
+#print(cre_line_summary('Plxnd1-Cre_OG1'))
+#print(len(a['Plxnd1-Cre_OG1']))
 
 def cre_lines (cre_line_name) :
     '''
@@ -162,37 +229,6 @@ def cre_lines (cre_line_name) :
         ids=dico_id[cre_line_name]
         return(ids)
 
-def cre_line_summary (cre_line_name) :
-    '''
-    For a given cre line name it returns its expression pattern. If no cre line name specified it returns an expression pattern summary for all the cre lines.
-
-    Parameters
-    ----------
-    cre_line_name : str
-        can be a cre line name or "No" if we don't want to specify any cre line name have all the expression patterns.
-
-    Returns
-    -------
-    data : Dataframe #à vérifier
-        Table of all the cre lines and their expression pattern
-
-    expression_summary : str
-        expression pattern of the given cre line name
-
-    '''
-
-    data1 = pd.read_csv(
-        "C:/Users/marga/Documents/DOCTORAT/ALLEN Institute/github sdk/Allen_Data_NVC/trangenic_lines.csv", sep=';',header=[0])
-    data = data1.set_index('cre_lines')
-    lines = data.index
-    if cre_line_name =="No" :
-        return(data)
-    else :
-        a = list(data.loc[cre_line_name])
-        expression_summary = a[0]
-        return(expression_summary)
-
-#print(cre_line_summary('Cux2-CreERT2'))
 
 def cre_experiments (structure, cre_type) :
     '''
