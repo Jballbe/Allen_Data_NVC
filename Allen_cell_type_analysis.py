@@ -8,15 +8,18 @@ import numpy as np
 import pandas as pd
 from ast import literal_eval
 import time
-from plotnine import ggplot, geom_line, aes, geom_abline, geom_point
+from plotnine import ggplot, geom_line, aes, geom_abline, geom_point, geom_text
 
 from scipy.stats import linregress
+from scipy import optimize
+from scipy.optimize import curve_fit
 import random
 import plotly.express as plotly
 
 from allensdk.core.swc import Marker
 import matplotlib.patches as mpatches
 from allensdk.ephys.ephys_extractor import EphysSweepFeatureExtractor
+import warnings
 
 #change '.ix' to '.loc' in allensdk\ephys\ephys_extractor.py (to avoid error for the .process_spikes() function
 
@@ -1118,6 +1121,448 @@ def spike_info(cell_id, sweep_number,key):
     return info
 
 
+def norm_diff(a):
+    """Calculate average of (a[i] - a[i+1]) / (a[i] + a[i+1])."""
+
+    if len(a) <= 1:
+        return np.nan
+
+    a = a.astype(float)
+    if np.allclose((a[1:] + a[:-1]), 0.):
+        return 0.
+    norm_diffs = (a[1:] - a[:-1]) / (a[1:] + a[:-1])
+
+    norm_diffs[(a[1:] == 0) & (a[:-1] == 0)] = 0.
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=RuntimeWarning, module="numpy")
+        avg = np.nanmean(norm_diffs)
+    return avg
+
+def adaptation_index(isis):
+    if len(isis) == 0:
+        return np.nan
+
+    return norm_diff(isis)
+
+def get_cell_stim_response_table(cell_id,sweep_nb):
+    '''
+    Create table for a given cell and sweep number with stimulus, response, time arrays, spikes times, sampling rate and input resistance 
+
+    Parameters
+    ----------
+    cell_id : int
+        Cell id.
+    sweep_nb : int
+        Sweep number.
+
+    Returns
+    -------
+    Cell_dict:dict
+        Dictionnary containing the stimulus array, the response array, the time array, the spike time array, the sampling rate and the input resistance
+
+    '''
+    current_data=ctc.get_ephys_data(cell_id).get_sweep(sweep_nb)
+    
+    index_range=current_data["index_range"]
+    
+    response=np.array(current_data["response"][0:index_range[1]+1])* 1e12  # to pA
+    stimulus=np.array(current_data["stimulus"][0:index_range[1]+1])* 1e3# to mV
+    sampling_rate=current_data["sampling_rate"]
+    time=np.arange(0, len(response)) * (1.0 / sampling_rate)
+    cell_dict={"stimulus":stimulus,
+               "response":response,
+               "time":time,
+               "spike_times":ctc.get_ephys_data(cell_id).get_spike_times(sweep_nb),
+               "sampling_rate":current_data["sampling_rate"],
+               "input_resistance_mohm":cell_ephys_info(cell_id)['input_resistance_mohm']}
+    return(cell_dict)
+    
+def extract_inst_freq_table(specimen_id,species_sweep_stim_table):
+    '''
+    Compute the instananous frequency in each interspike interval per sweep for a cell
+
+    Parameters
+    ----------
+    specimen_id : int
+        specimencell id.
+    species_sweep_stim_table : DataFrame
+        Coming from create_species_sweeps_stim_table function.
+
+    Returns
+    -------
+    inst_freq_table: DataFrame
+        Table containing for a given cell for each sweep the stimulus amplitude and the instantanous frequency per interspike interval.
+
+    '''
+    index_stim = species_sweep_stim_table.columns.get_loc('Long Square')
+    index_specimen = species_sweep_stim_table.index[species_sweep_stim_table["specimen_id"] == specimen_id][0]
+    
+    my_specimen_data = ctc.get_ephys_data(specimen_id)
+    sweep_numbers = species_sweep_stim_table.iloc[index_specimen, index_stim]
+    maximum_nb_interval =0
+    for current_sweep in sweep_numbers:
+        nb_of_interval=len(my_specimen_data.get_spike_times(current_sweep))
+        if nb_of_interval > maximum_nb_interval:
+            maximum_nb_interval=nb_of_interval
+    mycolumns=["specimen","sweep","stim_amplitude_pA"]+["interval_"+str(i) for i in range(1,(maximum_nb_interval))]
+    inst_freq_table=pd.DataFrame(index=np.arange(len(sweep_numbers)),columns=mycolumns)
+    for col in range(inst_freq_table.shape[1]):
+        inst_freq_table.iloc[:,col]=np.nan
+        
+    for line in range(len(sweep_numbers)):
+        current_sweep=sweep_numbers[line]
+        stim_amplitude=my_specimen_data.get_sweep_metadata(current_sweep)['aibs_stimulus_amplitude_pa']
+        spike_times=my_specimen_data.get_spike_times(current_sweep)
+        
+        inst_freq_table.iloc[line,0]=specimen_id
+        inst_freq_table.iloc[line,1]=current_sweep   
+        inst_freq_table.iloc[line,2]=stim_amplitude
+
+        if len(spike_times) >1:
+            for current_spike_time_index in range(1,len(spike_times)):
+                current_inst_frequency=1/(spike_times[current_spike_time_index]-spike_times[current_spike_time_index-1])
+                
+                inst_freq_table.iloc[line,(current_spike_time_index+2)]=current_inst_frequency
+        
+    inst_freq_table = inst_freq_table.sort_values(by=["specimen", 'stim_amplitude_pA'])
+    inst_freq_table['specimen']=pd.Categorical(inst_freq_table['specimen'])
+    
+    return(inst_freq_table)
+
+def table_to_fit(inst_freq_table):
+    '''
+    Create table of interspike index-instantanous frequency- stimulus amplitude
+
+    Parameters
+    ----------
+    inst_freq_table : DataFrame
+        Coming from extract_inst_freq_table.
+
+    Returns
+    -------
+    interval_freq_table : DataFrame
+        Reorganized table to fit exponential function in fit_exponential_decay function.
+
+    '''
+    interval_freq_table=pd.DataFrame(columns=['interval','inst_frequency','stimulus_amplitude'])
+    isnull_table=inst_freq_table.isnull()
+    for col in range(3,(inst_freq_table.shape[1])):
+        for line in range(inst_freq_table.shape[0]):
+            if isnull_table.iloc[line,col] == False:
+                new_line=pd.Series([int(col-2),inst_freq_table.iloc[line,col],inst_freq_table.iloc[line,2]],
+                                   index=['interval','inst_frequency','stimulus_amplitude'])
+                interval_freq_table=interval_freq_table.append(new_line,ignore_index=True)
+   
+    specimen=pd.Series(np.array([inst_freq_table.iloc[0,0]]*interval_freq_table.shape[0]))
+    interval_freq_table=pd.concat([specimen,interval_freq_table],axis=1)
+    interval_freq_table.columns=["specimen",'interval','inst_frequency','stimulus_amplitude']
+    interval_freq_table['specimen']=pd.Categorical(interval_freq_table['specimen'])
+
+    return interval_freq_table
+
+def my_exponential_decay(x,Y0,tau,b):
+    '''
+    Parameters
+    ----------
+    x : Array
+        interspike interval index array.
+    Y0 : flt
+        initial instantanous frequency .
+    tau : flt
+        Adaptation index constant.
+    b : flt
+        intantaneous frequency limit.
+
+    Returns
+    -------
+    y : array
+        Modelled instantanous frequency.
+
+    '''
+    y=Y0*np.exp(-tau*x)+b
+    
+    return y
+
+def fit_exponential_decay(interval_freq_table):
+    '''
+    
+
+    Parameters
+    ----------
+    interval_freq_table : DataFrame
+        Comming from table_to_fit function.
+
+    Returns
+    -------
+    my_plot : ggplot
+        
+    starting_freq : flt
+        estimated initial instantanous frequency.
+    adapt_cst : flt
+        Adaptation index constant.
+    limit_freq : flt
+        intantaneous frequency limit.
+    r2 : flt
+        Goodness of fit.
+
+    '''
+    
+   
+    x_data=interval_freq_table.iloc[:,1]
+    y_data=interval_freq_table.iloc[:,2]
+    
+    initial_amount=mean(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency'])
+    initial_tau=1
+    initial_limit=mean(interval_freq_table[interval_freq_table['interval']==max(interval_freq_table['interval'])]['inst_frequency'])
+    initial_estimate=[initial_amount,initial_tau,initial_limit]
+    parameters_boundaries=([0,0,0],[max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency']),np.inf,max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency'])])
+    
+    popt_overall,pcov_overall=curve_fit(my_exponential_decay,x_data,y_data,p0=initial_estimate,bounds=parameters_boundaries,check_finite=False)
+    
+    sim_interval=np.arange(1,(max(interval_freq_table['interval'])+1))
+    
+    sim_freq=np.array(my_exponential_decay(sim_interval, *popt_overall))
+    sim_interval=pd.Series(sim_interval)
+    sim_freq=pd.Series(sim_freq)
+    specimen=pd.Series(np.array([interval_freq_table.iloc[0,0]]*len(sim_freq)))
+    new_data=pd.concat([specimen,sim_interval,sim_freq],axis=1)
+    new_data.columns=['specimen','interval','inst_freq']
+
+    starting_freq,adapt_cst,limit_freq=popt_overall
+    starting_freq,adapt_cst,limit_freq=round(starting_freq,3),round(adapt_cst,3),round(limit_freq,3)
+    
+    r2=goodness_of_fit(y_data, sim_freq)
+    my_plot=ggplot(interval_freq_table,aes(x=interval_freq_table.columns[1],y=interval_freq_table.columns[2],color="stimulus_amplitude"))+geom_point()+geom_line(new_data,aes(x=new_data.columns[1],y=new_data.columns[2]),color='black')+geom_text(x=(max(interval_freq_table['interval'])+1)/2,y=max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency']),label="Adapt constant="+str(adapt_cst)+" , R2="+str(r2),color="black")
+
+    return my_plot,starting_freq,adapt_cst,limit_freq,r2
+
+def goodness_of_fit(y_data,simulated_y_data):
+    '''
+    Compute determination coefficient R2
+
+    Parameters
+    ----------
+    y_data : Array
+        Actual values.
+    simulated_y_data : Array
+        Estimated value.
+
+    Returns
+    -------
+    r2 : flt
+        Goodness of fit.
+
+    '''
+    # residual sum of squares
+    ss_res = np.sum((y_data - simulated_y_data) ** 2)
+    
+    # total sum of squares
+    ss_tot = np.sum((y_data - np.mean(y_data)) ** 2)
+    
+    # r-squared
+    r2 = 1 - (ss_res / ss_tot)
+    r2=round(r2,2)
+    return r2
+
+def extract_ISI(spike_times):
+    '''
+    Extract the ISI from the spike times array
+
+    Parameters
+    ----------
+    spike_times : array
+        Numpy array containing the spike times
+
+    Returns
+    -------
+    Array
+        Numpy array containing the ISI of a sweep.
+
+    '''
+    if len(spike_times) <= 1:
+        return np.array([])
+    return spike_times[1:] - spike_times[:-1]
+
+def extract_stim_freq_per_time(specimen_id,first_x_ms,species_sweep_stim_table):
+    '''
+    Function to extract for each specified specimen_id and the corresponding stimulus the frequency of the response
+    Frequency is defined as the number of spikes divided by the time between the stimulus start and the time of the last spike
+    Parameters
+    ----------
+    specimen_id : List of specimen id
+    i.e.[623960880,623960824,...]
+    species_table : DataFrame
+        DataFrame containing at least a column with the specimen_id and the stimulus of interest.
+    stimulus : str
+        the stimulus from which we want to extract the frequency.
+    Returns
+    -------
+    f_I_table : DataFrame
+        DataFrame with a column "specimen_id"(factor),the sweep number (int),the stimulus amplitude in pA(float),and the computed frequency of the response (float).
+    '''
+    f_I_table = pd.DataFrame(columns=['specimen', 'sweep', 'stim_amplitude_pA', 'frequence_Hz'])
+    index_stim = species_sweep_stim_table.columns.get_loc('Long Square')
+
+
+    index_specimen = species_sweep_stim_table.index[species_sweep_stim_table["specimen_id"] == specimen_id][0]
+    
+    my_specimen_data = ctc.get_ephys_data(specimen_id)
+    sweep_numbers = species_sweep_stim_table.iloc[index_specimen, index_stim]
+
+    
+    for current_sweep in sweep_numbers:
+        index_range=my_specimen_data.get_sweep(current_sweep)["index_range"]
+        sampling_rate=my_specimen_data.get_sweep(current_sweep)["sampling_rate"]
+        current_stim_array=(my_specimen_data.get_sweep(current_sweep)["stimulus"][0:index_range[1]+1])* 1e12 #to pA
+
+        
+        stim_start_index=index_range[0]+next(x for x, val in enumerate(current_stim_array[index_range[0]:]) if val != 0 )
+        current_time_array=np.arange(0, len(current_stim_array)) * (1.0 / sampling_rate)
+        
+        stim_start_time=current_time_array[stim_start_index]
+        end_time=stim_start_time+(first_x_ms*1e-3)
+        
+        reshaped_spike_times=my_specimen_data.get_spike_times(current_sweep)[my_specimen_data.get_spike_times(current_sweep) <= end_time ]
+        
+        nb_spike = len(reshaped_spike_times)
+        if nb_spike ==0:
+            freq = 0
+        else :
+
+            t_last_spike = reshaped_spike_times[-1]
+            freq = nb_spike / (t_last_spike - stim_start_time)
+            
+        new_line = pd.Series([int(specimen_id), current_sweep,
+                              my_specimen_data.get_sweep_metadata(current_sweep)['aibs_stimulus_amplitude_pa'],
+                              freq],
+                             index=['specimen', 'sweep', 'stim_amplitude_pA', 'frequence_Hz'])
+        f_I_table = f_I_table.append(new_line, ignore_index=True)
+
+    f_I_table = f_I_table.sort_values(by=["specimen", 'stim_amplitude_pA'])
+    f_I_table['specimen'] = pd.Categorical(f_I_table['specimen'])
+    return f_I_table
+
+def extract_stim_freq_per_nth_spike(specimen_id,nth_spike,species_sweep_stim_table):
+    '''
+    Function to extract for each specified specimen_id and the corresponding stimulus the frequency of the response
+    Frequency is defined as the number of spikes divided by the time between the stimulus start and the time of the specified index
+    Parameters
+    ----------
+    specimen_id : List of specimen id
+    i.e.[623960880,623960824,...]
+    nth_spike : int
+        number of spike to take into account
+    species_sweep_stim_table : DataFrame
+        
+    Returns
+    -------
+    f_I_table : DataFrame
+        DataFrame with a column "specimen_id"(factor),the sweep number (int),the stimulus amplitude in pA(float),and the computed frequency of the response (float).
+    '''
+    f_I_table = pd.DataFrame(columns=['specimen', 'sweep', 'stim_amplitude_pA', 'frequence_Hz'])
+    index_stim = species_sweep_stim_table.columns.get_loc('Long Square')
+    index_specimen = species_sweep_stim_table.index[species_sweep_stim_table["specimen_id"] == specimen_id][0]
+    
+    my_specimen_data = ctc.get_ephys_data(specimen_id)
+    sweep_numbers = species_sweep_stim_table.iloc[index_specimen, index_stim]
+    
+    
+    for current_sweep in sweep_numbers:
+        index_range=my_specimen_data.get_sweep(current_sweep)["index_range"]
+        sampling_rate=my_specimen_data.get_sweep(current_sweep)["sampling_rate"]
+        current_stim_array=(my_specimen_data.get_sweep(current_sweep)["stimulus"][0:index_range[1]+1])* 1e12 #to pA
+    
+        
+        stim_start_index=index_range[0]+next(x for x, val in enumerate(current_stim_array[index_range[0]:]) if val != 0 )
+        current_time_array=np.arange(0, len(current_stim_array)) * (1.0 / sampling_rate)
+        
+        stim_start_time=current_time_array[stim_start_index]
+       
+        
+        
+        if len(my_specimen_data.get_spike_times(current_sweep)) <nth_spike:
+            freq = 0
+        else :
+            reshaped_spike_times=my_specimen_data.get_spike_times(current_sweep)[:nth_spike]
+
+            nb_spike = len(reshaped_spike_times)
+            t_last_spike = reshaped_spike_times[-1]
+            freq = nb_spike / (t_last_spike - stim_start_time)
+            
+        new_line = pd.Series([int(specimen_id), current_sweep,
+                              my_specimen_data.get_sweep_metadata(current_sweep)['aibs_stimulus_amplitude_pa'],
+                              freq],
+                             index=['specimen', 'sweep', 'stim_amplitude_pA', 'frequence_Hz'])
+        f_I_table = f_I_table.append(new_line, ignore_index=True)
+    
+    f_I_table = f_I_table.sort_values(by=["specimen", 'stim_amplitude_pA'])
+    f_I_table['specimen'] = pd.Categorical(f_I_table['specimen'])
+    return f_I_table
+
+def mysigmoid(x,maxi,x0,slope):
+    y=maxi/(1+np.exp((x0-x)/slope))
+    return y
+
+def fit_sigmoid(f_I_table):
+    '''
+    Fit a sigmoid curve to the stim/amplitude data points to extract several I/O metrcis : the threshold, the saturation and the gain
+
+    Parameters
+    ----------
+    f_I_table : DataFrame
+        Stimulus_frequency table for one cell.
+
+    Returns
+    -------
+    estimated_gain : float
+        estimated gain of the I/O.
+    estimated_threshold : float
+        estimated neuron threshold.
+    estimated_saturation : float
+        estimated neuron saturation firing rate.
+    my_plot : ggplot
+        plot of the data point with the sigmoid fit and the linear fit to the linear part of the sigmoid.
+
+    '''
+    x_data=f_I_table.iloc[:,2]
+    y_data=f_I_table.iloc[:,3]
+    
+    
+    ##Get the initial estimate for the fit of sigmoid
+    #Get the maximum firing rate of the data
+    maxi=max(x_data)
+    
+    #Get the index corresponding to the median non-zero firing rate
+    without_zero_index=next(x for x, val in enumerate(y_data) if val >0 )
+    median_firing_rate_index=next(x for x, val in enumerate(y_data) if val >= np.median(y_data.iloc[without_zero_index:]))
+    #Get the stimulus amplitude correspondingto the median non-zero firing rate
+
+    x0=x_data.iloc[median_firing_rate_index]
+
+    #Get the slope from the linear fit of the firing rate
+    slope=fit_specimen_fi_slope(x_data,y_data)[0]
+
+    
+    initial_estimate=[maxi,x0,slope]
+    parameters_boundaries=([0,0,0],[np.inf,np.inf,np.inf])
+    
+    popt,pcov=curve_fit(mysigmoid,x_data,y_data,p0=initial_estimate,bounds=parameters_boundaries,check_finite=False)
+    
+    my_plot=ggplot(f_I_table,aes(x=f_I_table.columns[2],y=f_I_table.columns[3]))+geom_point()+geom_line(aes(x=x_data,y=mysigmoid(x_data,*popt)),color='blue')
+    
+    #get index 25% and 75% of max firing rate
+    twentyfive_index=next(x for x, val in enumerate(y_data) if val >(0.25*popt[0]))
+    seventyfive_index=next(x for x, val in enumerate(y_data) if val >(0.75*popt[0]))
+    #fit linear line to linear sigmoid portion
+    linear_estimated_slope,linear_estimated_intercept=fit_specimen_fi_slope(x_data.iloc[twentyfive_index:seventyfive_index],mysigmoid(x_data.iloc[twentyfive_index:seventyfive_index],*popt))
+    estimated_threshold=(0-linear_estimated_intercept)/linear_estimated_slope
+    r2=goodness_of_fit(y_data, mysigmoid(x_data,*popt))
+    my_plot=ggplot(f_I_table,aes(x=f_I_table.columns[2],y=f_I_table.columns[3]))+geom_point()+geom_line(aes(x=x_data,y=mysigmoid(x_data,*popt)),color='blue')+geom_abline(aes(intercept=linear_estimated_intercept,slope=linear_estimated_slope))+geom_text(x=0,y=median_firing_rate_index,label="R2="+str(r2),color="black")
+    
+    estimated_gain=linear_estimated_slope
+    estimated_saturation=popt[0]
+    
+    return estimated_gain,estimated_threshold,estimated_saturation,my_plot,r2
 # Morphology :
 
 def spiny_state(dict_species):
