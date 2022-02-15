@@ -1285,8 +1285,6 @@ def my_exponential_decay(x,Y0,tau,b):
 
 def fit_exponential_decay(interval_freq_table):
     '''
-    
-
     Parameters
     ----------
     interval_freq_table : DataFrame
@@ -1302,8 +1300,8 @@ def fit_exponential_decay(interval_freq_table):
         Adaptation index constant.
     limit_freq : flt
         intantaneous frequency limit.
-    r2 : flt
-        Goodness of fit.
+    pcov_overall : 2-D array
+        The estimated covariance of popt
 
     '''
     
@@ -1329,12 +1327,16 @@ def fit_exponential_decay(interval_freq_table):
     new_data.columns=['specimen','interval','inst_freq']
 
     starting_freq,adapt_cst,limit_freq=popt_overall
-    starting_freq,adapt_cst,limit_freq=round(starting_freq,3),round(adapt_cst,3),round(limit_freq,3)
+    starting_freq,adapt_cst,limit_freq=round(starting_freq,2),round(adapt_cst,2),round(limit_freq,2)
     
-    r2=goodness_of_fit(y_data, sim_freq)
-    my_plot=ggplot(interval_freq_table,aes(x=interval_freq_table.columns[1],y=interval_freq_table.columns[2],color="stimulus_amplitude"))+geom_point()+geom_line(new_data,aes(x=new_data.columns[1],y=new_data.columns[2]),color='black')+geom_text(x=(max(interval_freq_table['interval'])+1)/2,y=max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency']),label="Adapt constant="+str(adapt_cst)+" , R2="+str(r2),color="black")
-
-    return my_plot,starting_freq,adapt_cst,limit_freq,r2
+   
+    my_plot=ggplot(interval_freq_table,aes(x=interval_freq_table.columns[1],y=interval_freq_table.columns[2],color="stimulus_amplitude"))+geom_point()+geom_line(new_data,aes(x=new_data.columns[1],y=new_data.columns[2]),color='black')
+    my_plot= my_plot+geom_text(x=(max(interval_freq_table['interval'])+1)/2,y=max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency']),
+                               label="Tau ="+str(round(adapt_cst,2))+"+/-"+str(round(pcov_overall[1,1],2))+
+                               ' , f_in='+str(round(starting_freq,2))+'+/-'+str(round(pcov_overall[0,0],2))+
+                               ', f_lim='+str(round(limit_freq,2))+'+/-'+str(round(pcov_overall[2,2],2)),color="black",size=10)
+    
+    return my_plot,starting_freq,adapt_cst,limit_freq,pcov_overall
 
 def goodness_of_fit(y_data,simulated_y_data):
     '''
@@ -1522,7 +1524,10 @@ def fit_sigmoid(f_I_table):
         estimated neuron saturation firing rate.
     my_plot : ggplot
         plot of the data point with the sigmoid fit and the linear fit to the linear part of the sigmoid.
-
+    pcov: 2-D array
+        The estimated covariance of popt
+    R2: flt
+        Coefficient of determination of linear fit
     '''
     x_data=f_I_table.iloc[:,2]
     y_data=f_I_table.iloc[:,3]
@@ -1556,13 +1561,18 @@ def fit_sigmoid(f_I_table):
     #fit linear line to linear sigmoid portion
     linear_estimated_slope,linear_estimated_intercept=fit_specimen_fi_slope(x_data.iloc[twentyfive_index:seventyfive_index],mysigmoid(x_data.iloc[twentyfive_index:seventyfive_index],*popt))
     estimated_threshold=(0-linear_estimated_intercept)/linear_estimated_slope
-    r2=goodness_of_fit(y_data, mysigmoid(x_data,*popt))
-    my_plot=ggplot(f_I_table,aes(x=f_I_table.columns[2],y=f_I_table.columns[3]))+geom_point()+geom_line(aes(x=x_data,y=mysigmoid(x_data,*popt)),color='blue')+geom_abline(aes(intercept=linear_estimated_intercept,slope=linear_estimated_slope))+geom_text(x=0,y=median_firing_rate_index,label="R2="+str(r2),color="black")
-    
-    estimated_gain=linear_estimated_slope
     estimated_saturation=popt[0]
+    estimated_gain=linear_estimated_slope
+    r2=goodness_of_fit(y_data, mysigmoid(x_data,*popt))
+    my_plot=ggplot(f_I_table,aes(x=f_I_table.columns[2],y=f_I_table.columns[3]))+geom_point()+geom_line(aes(x=x_data,y=mysigmoid(x_data,*popt)),color='blue')+geom_abline(aes(intercept=linear_estimated_intercept,slope=linear_estimated_slope))
+    my_plot+=geom_text(x=0,y=estimated_saturation,label="Gain="+str(round(estimated_gain,2))+
+                       ', thresh='+str(round(estimated_threshold,2))+",R2="+str(round(r2,2))+
+                       ', sat='+str(round(estimated_saturation,2))+'+/-'+str(round(pcov[0,0],2)),size=10,color="black")
     
-    return estimated_gain,estimated_threshold,estimated_saturation,my_plot,r2
+    
+    
+    
+    return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov,r2
 # Morphology :
 
 def spiny_state(dict_species):
