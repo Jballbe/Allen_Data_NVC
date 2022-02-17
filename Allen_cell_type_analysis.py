@@ -1223,7 +1223,7 @@ def extract_inst_freq_table(specimen_id,species_sweep_stim_table):
                 current_inst_frequency=1/(spike_times[current_spike_time_index]-spike_times[current_spike_time_index-1])
                 
                 inst_freq_table.iloc[line,(current_spike_time_index+2)]=current_inst_frequency
-        
+                inst_freq_table.iloc[line,3:]/=max(inst_freq_table.iloc[line,3:])
     inst_freq_table = inst_freq_table.sort_values(by=["specimen", 'stim_amplitude_pA'])
     inst_freq_table['specimen']=pd.Categorical(inst_freq_table['specimen'])
     
