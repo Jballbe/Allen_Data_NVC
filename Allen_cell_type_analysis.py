@@ -1218,7 +1218,8 @@ def extract_inst_freq_table(specimen_id,species_sweep_stim_table):
         inst_freq_table.iloc[line,1]=current_sweep   
         inst_freq_table.iloc[line,2]=stim_amplitude
 
-        if len(spike_times) >1:
+        if len(spike_times) >7:
+            
             for current_spike_time_index in range(1,len(spike_times)):
                 current_inst_frequency=1/(spike_times[current_spike_time_index]-spike_times[current_spike_time_index-1])
                 
