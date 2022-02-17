@@ -1223,7 +1223,7 @@ def extract_inst_freq_table(specimen_id,species_sweep_stim_table):
                 current_inst_frequency=1/(spike_times[current_spike_time_index]-spike_times[current_spike_time_index-1])
                 
                 inst_freq_table.iloc[line,(current_spike_time_index+2)]=current_inst_frequency
-                inst_freq_table.iloc[line,3:]/=max(inst_freq_table.iloc[line,3:])
+            inst_freq_table.iloc[line,3:]/=max(inst_freq_table.iloc[line,3:])
     inst_freq_table = inst_freq_table.sort_values(by=["specimen", 'stim_amplitude_pA'])
     inst_freq_table['specimen']=pd.Categorical(inst_freq_table['specimen'])
     
@@ -1309,12 +1309,12 @@ def fit_exponential_decay(interval_freq_table):
     x_data=interval_freq_table.iloc[:,1]
     y_data=interval_freq_table.iloc[:,2]
     
-    initial_amount=mean(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency'])
+    initial_amount=np.mean(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency'])
     initial_tau=1
-    initial_limit=mean(interval_freq_table[interval_freq_table['interval']==max(interval_freq_table['interval'])]['inst_frequency'])
+    initial_limit=np.mean(interval_freq_table[interval_freq_table['interval']==max(interval_freq_table['interval'])]['inst_frequency'])
     initial_estimate=[initial_amount,initial_tau,initial_limit]
     parameters_boundaries=([0,0,0],[max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency']),np.inf,max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency'])])
-    
+
     popt_overall,pcov_overall=curve_fit(my_exponential_decay,x_data,y_data,p0=initial_estimate,bounds=parameters_boundaries,check_finite=False)
     
     sim_interval=np.arange(1,(max(interval_freq_table['interval'])+1))
