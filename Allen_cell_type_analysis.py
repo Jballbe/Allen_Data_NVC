@@ -911,51 +911,6 @@ def select_specimen_sweep_stimulus(species_table, stimulus):
     return species_table[["specimen_id", stimulus]]
 
 
-def extract_stim_freq(specimen_id, species_table, stimulus, mydef=True):
-    '''
-    Function to extract for each specified specimen_id and the corresponding stimulus the frequency of the response
-
-    Parameters
-    ----------
-    specimen_id : List of specimen id
-    i.e.[623960880,623960824,...]
-    species_table : DataFrame
-        DataFrame containing at least a column with the specimen_id and the stimulus of interest.
-    stimulus : str
-        the stimulus from which we want to extract the frequency.
-    Returns
-    -------
-    f_I_table : DataFrame
-        DataFrame with a column "specimen_id"(factor),the sweep number (int),the stimulus amplitude in pA(float),and the computed frequency of the response (float).
-    '''
-    f_I_table = pd.DataFrame(columns=['specimen', 'sweep', 'stim_amplitude_pA', 'frequence_Hz'])
-    index_stim = species_table.columns.get_loc(stimulus)
-    for current_specimen in specimen_id:
-        index_specimen = species_table.index[species_table["specimen_id"] == current_specimen][0]
-
-        my_specimen_data = ctc.get_ephys_data(current_specimen)
-        sweep_numbers = species_table.iloc[index_specimen, index_stim]
-
-        for current_sweep in sweep_numbers:
-
-            nb_spike = len(my_specimen_data.get_spike_times(current_sweep))
-            if nb_spike < 2:
-                freq = nb_spike
-            elif mydef == True:
-                t_first_spike = my_specimen_data.get_spike_times(current_sweep)[0]
-                t_last_spike = my_specimen_data.get_spike_times(current_sweep)[-1]
-                freq = nb_spike / (t_last_spike - t_first_spike)
-            elif mydef == False:
-                freq = nb_spike
-            new_line = pd.Series([int(current_specimen), current_sweep,
-                                  my_specimen_data.get_sweep_metadata(current_sweep)['aibs_stimulus_amplitude_pa'],
-                                  freq],
-                                 index=['specimen', 'sweep', 'stim_amplitude_pA', 'frequence_Hz'])
-            f_I_table = f_I_table.append(new_line, ignore_index=True)
-
-    f_I_table = f_I_table.sort_values(by=["specimen", 'stim_amplitude_pA'])
-    f_I_table['specimen'] = pd.Categorical(f_I_table['specimen'])
-    return f_I_table
 
 
 def average_rate(t, spikes, start, end):
@@ -1527,8 +1482,7 @@ def fit_sigmoid(f_I_table):
         plot of the data point with the sigmoid fit and the linear fit to the linear part of the sigmoid.
     pcov: 2-D array
         The estimated covariance of popt
-    R2: flt
-        Coefficient of determination of linear fit
+    
     '''
     x_data=f_I_table.iloc[:,2]
     y_data=f_I_table.iloc[:,3]
@@ -1548,32 +1502,84 @@ def fit_sigmoid(f_I_table):
     #Get the slope from the linear fit of the firing rate
     slope=fit_specimen_fi_slope(x_data,y_data)[0]
 
-    
+
     initial_estimate=[maxi,x0,slope]
     parameters_boundaries=([0,0,0],[np.inf,np.inf,np.inf])
+    try:
+
+        popt,pcov=curve_fit(mysigmoid,x_data,y_data,p0=initial_estimate,bounds=parameters_boundaries,check_finite=False)
+        
+        new_x_data=pd.Series(np.arange(min(x_data),max(x_data),1))
+        new_y_data=pd.Series(mysigmoid(new_x_data,*popt))
+        new_data=pd.concat([new_x_data,new_y_data],axis=1,ignore_index=True)
+        new_data.columns=["stim_amplitude_pA","frequence_Hz"]
+        slope_confidence_threshold=4
+        if trust_sigmoid(new_x_data, *popt, slope_confidence_threshold)==False:
+            estimated_gain=np.nan
+
+            estimated_saturation=np.nan
+            estimated_threshold=np.nan
+            my_plot=np.nan
+            pcov=np.nan
+            #return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov
+        else:
+
+            #get index 25% and 75% of max firing rate
+            twentyfive_index=next(x for x, val in enumerate(new_y_data) if val >(0.25*popt[0]))
+            seventyfive_index=next(x for x, val in enumerate(new_y_data) if val >(0.75*popt[0]))
+            #fit linear line to linear sigmoid portion
+            linear_estimated_slope,linear_estimated_intercept=fit_specimen_fi_slope(new_x_data.iloc[twentyfive_index:seventyfive_index],mysigmoid(new_x_data.iloc[twentyfive_index:seventyfive_index],*popt))
+            estimated_threshold=(0-linear_estimated_intercept)/linear_estimated_slope
+            my_derivative=np.array(derivative(mysigmoid,new_x_data,dx=1e-1,args=(popt[0],popt[1],popt[2])))
+           
+            if my_derivative[-1]<0.001:
+                
+                estimated_saturation=popt[0]
+            else:
+                estimated_saturation=np.nan
+            estimated_gain=linear_estimated_slope
+            
+            my_plot=ggplot(f_I_table,aes(x=f_I_table.columns[2],y=f_I_table.columns[3]))+geom_point()+geom_line(new_data,aes(x=new_data.columns[0],y=new_data.columns[1]),color='blue')+geom_abline(aes(intercept=linear_estimated_intercept,slope=linear_estimated_slope))
+            my_plot+=geom_text(x=10,y=estimated_saturation,label="Gain="+str(round(estimated_gain,2))+
+                               ', thresh='+str(round(estimated_threshold,2))+
+                               ', sat='+str(round(estimated_saturation,2))+'+/-'+str(round(pcov[0,0],2)),size=10,color="black")
+            return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov,popt
+    except (ValueError):
+        print("stopped_valueError")
+        estimated_gain=np.nan
+        estimated_saturation=np.nan
+        estimated_threshold=np.nan
+        my_plot=np.nan
+        pcov=np.nan
+        return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov
+    except (RuntimeError):
+        print("Can't fit sigmoid, least-square optimization failed")
+        estimated_gain=np.nan
+        estimated_saturation=np.nan
+        estimated_threshold=np.nan
+        my_plot=np.nan
+        pcov=np.nan
+        return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov
     
-    popt,pcov=curve_fit(mysigmoid,x_data,y_data,p0=initial_estimate,bounds=parameters_boundaries,check_finite=False)
-    
-    my_plot=ggplot(f_I_table,aes(x=f_I_table.columns[2],y=f_I_table.columns[3]))+geom_point()+geom_line(aes(x=x_data,y=mysigmoid(x_data,*popt)),color='blue')
-    
-    #get index 25% and 75% of max firing rate
-    twentyfive_index=next(x for x, val in enumerate(y_data) if val >(0.25*popt[0]))
-    seventyfive_index=next(x for x, val in enumerate(y_data) if val >(0.75*popt[0]))
-    #fit linear line to linear sigmoid portion
-    linear_estimated_slope,linear_estimated_intercept=fit_specimen_fi_slope(x_data.iloc[twentyfive_index:seventyfive_index],mysigmoid(x_data.iloc[twentyfive_index:seventyfive_index],*popt))
-    estimated_threshold=(0-linear_estimated_intercept)/linear_estimated_slope
-    estimated_saturation=popt[0]
-    estimated_gain=linear_estimated_slope
-    r2=goodness_of_fit(y_data, mysigmoid(x_data,*popt))
-    my_plot=ggplot(f_I_table,aes(x=f_I_table.columns[2],y=f_I_table.columns[3]))+geom_point()+geom_line(aes(x=x_data,y=mysigmoid(x_data,*popt)),color='blue')+geom_abline(aes(intercept=linear_estimated_intercept,slope=linear_estimated_slope))
-    my_plot+=geom_text(x=0,y=estimated_saturation,label="Gain="+str(round(estimated_gain,2))+
-                       ', thresh='+str(round(estimated_threshold,2))+",R2="+str(round(r2,2))+
-                       ', sat='+str(round(estimated_saturation,2))+'+/-'+str(round(pcov[0,0],2)),size=10,color="black")
     
     
+
+
+#%%Check slope of sigmoid
+from scipy.misc import derivative
+def trust_sigmoid(new_x_data,maxi,x0,slope,slope_confidence_threshold):
+    
+    my_derivative=np.array(derivative(mysigmoid,new_x_data,dx=1e-1,args=(maxi,x0,slope)))
+   
+    if max(my_derivative)>slope_confidence_threshold:
+        print("slope to high")
+        return False
+    elif my_derivative[-1]==0:
+        print("end slope to low")
+        return False
     
     
-    return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov,r2
+    return True
 # Morphology :
 
 def spiny_state(dict_species):
