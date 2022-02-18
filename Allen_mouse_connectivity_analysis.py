@@ -187,7 +187,7 @@ def injection_structure_cre_line (injection_structure_name) :
 
 
 a=injection_structure_cre_line('Primary visual area')
-print(a)
+#print(a)
 #print(a.keys())
 #print(cre_line_summary('Plxnd1-Cre_OG1'))
 #print(len(a['Plxnd1-Cre_OG1']))
@@ -644,7 +644,23 @@ def density_volume_minimum (experiment_id,name_injection_structure,parameters,mi
 
 #y=density_volume_minimum(263780729,'Primary visual area',['normalized_projection_volume',"projection_density"],[0.05,0.05]).to_string()
 
+def hemisphere_injection (experiment_id, injection_structure) :
+    structure_tree = mcc.get_structure_tree()
+    structure_injection = structure_tree.get_structures_by_name([injection_structure])[0]
+    structure_injection_experiments = mcc.get_experiments(cre=None, injection_structure_ids=[structure_injection['id']])
+    unionize = mcc.get_structure_unionizes([e['id'] for e in structure_injection_experiments], is_injection=True,
+                                           hemisphere_ids=[1, 2])
+    row_numbers = np.arange(0, len(unionize))
+    for i in row_numbers:
+        if unionize.loc[i]["experiment_id"] == experiment_id:
+            hemi=unionize.loc[i]['hemisphere_id']
+            if hemi == 1 :
+                return("left hemisphere")
+            else :
+                return ("right hemisphere")
+#c=hemisphere_injection(263780729,'Primary visual area')
 
+#print(c)
 
 
 def id_projection_structure (name_injection_structure,cre,target_projection,experiment_id) :
@@ -705,7 +721,9 @@ def id_projection_structure (name_injection_structure,cre,target_projection,expe
                                   to_change_id[2]: to_change_hemi[2]})
         a = experiment_info(experiment_id, name_injection_structure)
         values = list(a[experiment_id].loc["injection_volume":'injection_z'])
-        rows = ["injection_volume", "injection_x", "injection_y", "injection_z"]
+        inj_hemi=hemisphere_injection(experiment_id,name_injection_structure)
+        values.append(inj_hemi)
+        rows = ["injection_volume", "injection_x", "injection_y", "injection_z","injection_hemisphere"]
         col = [to_change_hemi[0], to_change_hemi[1], to_change_hemi[2]]
         v = [values, values, values]
         new_mini = pd.DataFrame(v, columns=rows, index=col)
@@ -714,7 +732,9 @@ def id_projection_structure (name_injection_structure,cre,target_projection,expe
             new = new_dataframe.rename(index={to_change_id[0]: to_change_hemi[0], to_change_id[1]: to_change_hemi[1]})
             a = experiment_info(experiment_id, name_injection_structure)
             values = list(a[experiment_id].loc["injection_volume":'injection_z'])
-            rows = ["injection_volume", "injection_x", "injection_y", "injection_z"]
+            inj_hemi = hemisphere_injection(experiment_id, name_injection_structure)
+            values.append(inj_hemi)
+            rows = ["injection_volume", "injection_x", "injection_y", "injection_z","injection_hemisphere"]
             col = [to_change_hemi[0], to_change_hemi[1]]
             v = [values, values]
             new_mini = pd.DataFrame(v, columns=rows, index=col)
@@ -722,7 +742,9 @@ def id_projection_structure (name_injection_structure,cre,target_projection,expe
             new = new_dataframe.rename(index={to_change_id[0]: to_change_hemi[0]})
             a = experiment_info(experiment_id, name_injection_structure)
             values = list(a[experiment_id].loc["injection_volume":'injection_z'])
-            rows = ["injection_volume", "injection_x", "injection_y", "injection_z"]
+            inj_hemi = hemisphere_injection(experiment_id, name_injection_structure)
+            values.append(inj_hemi)
+            rows = ["injection_volume", "injection_x", "injection_y", "injection_z","injection_hemisphere"]
             col = [to_change_hemi[0]]
             v = [values]
             new_mini = pd.DataFrame(v, columns=rows, index=col)
@@ -731,8 +753,8 @@ def id_projection_structure (name_injection_structure,cre,target_projection,expe
     id_projection_injection_info=id_projection_info.append(new_mini.transpose()) #with injection info
     return (id_projection_info,id_projection_injection_info)
 
-#dd,cc=id_projection_structure('Primary visual area',None,'Primary visual area, layer 6b',263780729)
-#print(dd)
+dd,cc=id_projection_structure('Primary visual area',None,'Primary visual area, layer 6b',263780729)
+#print(cc)
 #print(cc.to_string())
 
 def structure_name_info (structure_name) :
@@ -859,9 +881,6 @@ def plot_matrix (name_injection_structure, targeted_structure_ids, projection_pa
 
 
 #500836840 ; 307297141 ; 503069254 ; 263780729
-
-
-
 
 
 
