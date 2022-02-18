@@ -1285,14 +1285,14 @@ def fit_exponential_decay(interval_freq_table):
     starting_freq,adapt_cst,limit_freq=popt_overall
     starting_freq,adapt_cst,limit_freq=round(starting_freq,2),round(adapt_cst,2),round(limit_freq,2)
     
-   
+    steady_state_frequency=limit_freq/starting_freq
     my_plot=ggplot(interval_freq_table,aes(x=interval_freq_table.columns[1],y=interval_freq_table.columns[2],color="stimulus_amplitude"))+geom_point()+geom_line(new_data,aes(x=new_data.columns[1],y=new_data.columns[2]),color='black')
     my_plot= my_plot+geom_text(x=(max(interval_freq_table['interval'])+1)/2,y=max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency']),
                                label="Tau ="+str(round(adapt_cst,2))+"+/-"+str(round(pcov_overall[1,1],2))+
                                ' , f_in='+str(round(starting_freq,2))+'+/-'+str(round(pcov_overall[0,0],2))+
                                ', f_lim='+str(round(limit_freq,2))+'+/-'+str(round(pcov_overall[2,2],2)),color="black",size=10)
     
-    return my_plot,starting_freq,adapt_cst,limit_freq,pcov_overall
+    return my_plot,starting_freq,adapt_cst,limit_freq,steady_state_frequency,pcov_overall
 
 def goodness_of_fit(y_data,simulated_y_data):
     '''
