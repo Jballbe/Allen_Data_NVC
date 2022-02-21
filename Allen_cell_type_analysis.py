@@ -1132,7 +1132,7 @@ def get_cell_stim_response_table(cell_id,sweep_nb):
                "input_resistance_mohm":cell_ephys_info(cell_id)['input_resistance_mohm']}
     return(cell_dict)
     
-def extract_inst_freq_table(specimen_id,species_sweep_stim_table):
+def extract_inst_freq_table(specimen_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_spike_nb=False,first_nth_spikes=0):
     '''
     Compute the instananous frequency in each interspike interval per sweep for a cell
 
@@ -1155,10 +1155,29 @@ def extract_inst_freq_table(specimen_id,species_sweep_stim_table):
     my_specimen_data = ctc.get_ephys_data(specimen_id)
     sweep_numbers = species_sweep_stim_table.iloc[index_specimen, index_stim]
     maximum_nb_interval =0
+ 
     for current_sweep in sweep_numbers:
-        nb_of_interval=len(my_specimen_data.get_spike_times(current_sweep))
-        if nb_of_interval > maximum_nb_interval:
-            maximum_nb_interval=nb_of_interval
+        if per_time==True:
+            index_range=my_specimen_data.get_sweep(current_sweep)["index_range"]
+            sampling_rate=my_specimen_data.get_sweep(current_sweep)["sampling_rate"]
+            current_stim_array=(my_specimen_data.get_sweep(current_sweep)["stimulus"][0:index_range[1]+1])* 1e12 #to pA
+            stim_start_index=index_range[0]+next(x for x, val in enumerate(current_stim_array[index_range[0]:]) if val != 0 )
+            current_time_array=np.arange(0, len(current_stim_array)) * (1.0 / sampling_rate)
+            stim_start_time=current_time_array[stim_start_index]
+            end_time=stim_start_time+(first_x_ms*1e-3)
+            
+            spike_times=my_specimen_data.get_spike_times(current_sweep)[my_specimen_data.get_spike_times(current_sweep) <= end_time ]
+            if len(spike_times)>maximum_nb_interval:
+                maximum_nb_interval=len(spike_times)
+        elif per_spike_nb==True:
+            spike_times=my_specimen_data.get_spike_times(current_sweep)[:first_nth_spikes]
+            if len(spike_times)>maximum_nb_interval:
+                maximum_nb_interval=len(spike_times)
+        else:
+            spike_times=my_specimen_data.get_spike_times(current_sweep)
+            if len(spike_times)>maximum_nb_interval:
+                maximum_nb_interval=len(spike_times)
+       
     mycolumns=["specimen","sweep","stim_amplitude_pA"]+["interval_"+str(i) for i in range(1,(maximum_nb_interval))]
     inst_freq_table=pd.DataFrame(index=np.arange(len(sweep_numbers)),columns=mycolumns)
     for col in range(inst_freq_table.shape[1]):
@@ -1167,18 +1186,34 @@ def extract_inst_freq_table(specimen_id,species_sweep_stim_table):
     for line in range(len(sweep_numbers)):
         current_sweep=sweep_numbers[line]
         stim_amplitude=my_specimen_data.get_sweep_metadata(current_sweep)['aibs_stimulus_amplitude_pa']
-        spike_times=my_specimen_data.get_spike_times(current_sweep)
+        if per_time==True:
+            index_range=my_specimen_data.get_sweep(current_sweep)["index_range"]
+            sampling_rate=my_specimen_data.get_sweep(current_sweep)["sampling_rate"]
+            current_stim_array=(my_specimen_data.get_sweep(current_sweep)["stimulus"][0:index_range[1]+1])* 1e12 #to pA
+            stim_start_index=index_range[0]+next(x for x, val in enumerate(current_stim_array[index_range[0]:]) if val != 0 )
+            current_time_array=np.arange(0, len(current_stim_array)) * (1.0 / sampling_rate)
+            stim_start_time=current_time_array[stim_start_index]
+            end_time=stim_start_time+(first_x_ms*1e-3)
+            
+            spike_times=my_specimen_data.get_spike_times(current_sweep)[my_specimen_data.get_spike_times(current_sweep) <= end_time ]
+           
+        elif per_spike_nb==True:
+            spike_times=my_specimen_data.get_spike_times(current_sweep)[:first_nth_spikes]
+            
+        else:
+            spike_times=my_specimen_data.get_spike_times(current_sweep)
+            
         
         inst_freq_table.iloc[line,0]=specimen_id
         inst_freq_table.iloc[line,1]=current_sweep   
         inst_freq_table.iloc[line,2]=stim_amplitude
 
         if len(spike_times) >7:
-            
             for current_spike_time_index in range(1,len(spike_times)):
                 current_inst_frequency=1/(spike_times[current_spike_time_index]-spike_times[current_spike_time_index-1])
                 
                 inst_freq_table.iloc[line,(current_spike_time_index+2)]=current_inst_frequency
+        
             inst_freq_table.iloc[line,3:]/=max(inst_freq_table.iloc[line,3:])
     inst_freq_table = inst_freq_table.sort_values(by=["specimen", 'stim_amplitude_pA'])
     inst_freq_table['specimen']=pd.Categorical(inst_freq_table['specimen'])
@@ -1283,6 +1318,8 @@ def fit_exponential_decay(interval_freq_table):
     new_data.columns=['specimen','interval','inst_freq']
 
     starting_freq,adapt_cst,limit_freq=popt_overall
+    starting_freq=my_exponential_decay(1.0,*popt_overall)
+    limit_freq=my_exponential_decay(max(interval_freq_table['interval']),*popt_overall)
     starting_freq,adapt_cst,limit_freq=round(starting_freq,2),round(adapt_cst,2),round(limit_freq,2)
     
     steady_state_frequency=limit_freq/starting_freq
