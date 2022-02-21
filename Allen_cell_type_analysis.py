@@ -1558,7 +1558,7 @@ def fit_sigmoid(f_I_table):
             estimated_threshold=np.nan
             my_plot=np.nan
             pcov=np.nan
-            #return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov
+            return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov
         else:
 
             #get index 25% and 75% of max firing rate
