@@ -1572,7 +1572,55 @@ def fit_sigmoid(f_I_table):
     
     
     
+#%%General function to extract parameters
+def extract_feature(specimen_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0):
+    '''
+    
 
+    Parameters
+    ----------
+    specimen_id : list
+        list of specimen id.
+    species_sweep_stim_table : DataFrame
+        DataFrame coming from create_species_sweeps_stim_table function.
+    per_time : Boolean, optional
+        Extract feature per time . The default is False.
+    first_x_ms : int, optional
+        If per_time==True , indicate the time to take into account to extract features in ms (x ms after the start of the stimulus). The default is 0.
+    per_nth_spike : Boolean, optional
+        Extract feature per spike number. The default is False.
+    first_nth_spike : int, optional
+        If per_nth_spike==True, indicate the n first spike to take into account for feature extraction. The default is 0.
+
+    Returns
+    -------
+    full_table : DataFrame
+        DataFrame containing the different feature values for each cell .
+
+    '''
+    mycolumns=['Cell_id','Gain','Threshold','Saturation','Adapt_cst','Starting_frequency','Limit_frequency','Steady_state_frequency']
+    full_table=pd.DataFrame(columns=mycolumns)
+    for current_specimen_id in specimen_id:
+        f_I_table=extract_stim_freq(specimen_id,species_sweep_stim_table,per_time,first_x_ms,per_nth_spike,first_nth_spike)
+        f_I_gain,f_I_threshold,f_I_saturation,f_I_plot,f_I_pcov,f_I_popt=fit_sigmoid(f_I_table)
+        
+        inst_freq_table=table_to_fit(extract_inst_freq_table(specimen_id,species_sweep_stim_table,per_time,first_x_ms,per_spike_nb=per_nth_spike,first_nth_spikes=first_nth_spike))
+        inst_plot,inst_starting_freq,inst_adapt_cst,inst_limit_freq,inst_steady_state_frequency,inst_pcov,inst_popt=fit_exponential_decay(inst_freq_table)
+        
+        
+        new_line=pd.Series([int(current_specimen_id),
+                            round(f_I_gain,2),
+                            round(f_I_threshold,2),
+                            round(f_I_saturation,2),
+                            round(inst_adapt_cst,2),
+                            round(inst_starting_freq,2),
+                            round(inst_limit_freq,2),
+                            round(inst_steady_state_frequency,2)],
+                           index=mycolumns)
+        
+        full_table=full_table.append(new_line, ignore_index=True)
+    full_table['Cell_id']=pd.Categorical(full_table['Cell_id'])
+    return full_table
 
 #%%Check slope of sigmoid
 from scipy.misc import derivative
