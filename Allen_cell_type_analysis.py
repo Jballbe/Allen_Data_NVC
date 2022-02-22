@@ -1378,77 +1378,15 @@ def extract_ISI(spike_times):
         return np.array([])
     return spike_times[1:] - spike_times[:-1]
 
-def extract_stim_freq_per_time(specimen_id,first_x_ms,species_sweep_stim_table):
-    '''
-    Function to extract for each specified specimen_id and the corresponding stimulus the frequency of the response
-    Frequency is defined as the number of spikes divided by the time between the stimulus start and the time of the last spike
-    Parameters
-    ----------
-    specimen_id : List of specimen id
-    i.e.[623960880,623960824,...]
-    species_table : DataFrame
-        DataFrame containing at least a column with the specimen_id and the stimulus of interest.
-    stimulus : str
-        the stimulus from which we want to extract the frequency.
-    Returns
-    -------
-    f_I_table : DataFrame
-        DataFrame with a column "specimen_id"(factor),the sweep number (int),the stimulus amplitude in pA(float),and the computed frequency of the response (float).
-    '''
-    f_I_table = pd.DataFrame(columns=['specimen', 'sweep', 'stim_amplitude_pA', 'frequence_Hz'])
-    index_stim = species_sweep_stim_table.columns.get_loc('Long Square')
-
-
-    index_specimen = species_sweep_stim_table.index[species_sweep_stim_table["specimen_id"] == specimen_id][0]
-    
-    my_specimen_data = ctc.get_ephys_data(specimen_id)
-    sweep_numbers = species_sweep_stim_table.iloc[index_specimen, index_stim]
-
-    
-    for current_sweep in sweep_numbers:
-        index_range=my_specimen_data.get_sweep(current_sweep)["index_range"]
-        sampling_rate=my_specimen_data.get_sweep(current_sweep)["sampling_rate"]
-        current_stim_array=(my_specimen_data.get_sweep(current_sweep)["stimulus"][0:index_range[1]+1])* 1e12 #to pA
-
-        
-        stim_start_index=index_range[0]+next(x for x, val in enumerate(current_stim_array[index_range[0]:]) if val != 0 )
-        current_time_array=np.arange(0, len(current_stim_array)) * (1.0 / sampling_rate)
-        
-        stim_start_time=current_time_array[stim_start_index]
-        end_time=stim_start_time+(first_x_ms*1e-3)
-        
-        reshaped_spike_times=my_specimen_data.get_spike_times(current_sweep)[my_specimen_data.get_spike_times(current_sweep) <= end_time ]
-        
-        nb_spike = len(reshaped_spike_times)
-        if nb_spike ==0:
-            freq = 0
-        else :
-
-            t_last_spike = reshaped_spike_times[-1]
-            freq = nb_spike / (t_last_spike - stim_start_time)
-            
-        new_line = pd.Series([int(specimen_id), current_sweep,
-                              my_specimen_data.get_sweep_metadata(current_sweep)['aibs_stimulus_amplitude_pa'],
-                              freq],
-                             index=['specimen', 'sweep', 'stim_amplitude_pA', 'frequence_Hz'])
-        f_I_table = f_I_table.append(new_line, ignore_index=True)
-
-    f_I_table = f_I_table.sort_values(by=["specimen", 'stim_amplitude_pA'])
-    f_I_table['specimen'] = pd.Categorical(f_I_table['specimen'])
-    return f_I_table
-
-def extract_stim_freq_per_nth_spike(specimen_id,nth_spike,species_sweep_stim_table):
+def extract_stim_freq(specimen_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0):
     '''
     Function to extract for each specified specimen_id and the corresponding stimulus the frequency of the response
     Frequency is defined as the number of spikes divided by the time between the stimulus start and the time of the specified index
     Parameters
     ----------
-    specimen_id : List of specimen id
-    i.e.[623960880,623960824,...]
-    nth_spike : int
-        number of spike to take into account
-    species_sweep_stim_table : DataFrame
-        
+    specimen_id : int
+
+    
     Returns
     -------
     f_I_table : DataFrame
@@ -1475,15 +1413,23 @@ def extract_stim_freq_per_nth_spike(specimen_id,nth_spike,species_sweep_stim_tab
        
         
         
-        if len(my_specimen_data.get_spike_times(current_sweep)) <nth_spike:
+        if len(my_specimen_data.get_spike_times(current_sweep)) <2:
             freq = 0
         else :
-            reshaped_spike_times=my_specimen_data.get_spike_times(current_sweep)[:nth_spike]
-
-            nb_spike = len(reshaped_spike_times)
-            t_last_spike = reshaped_spike_times[-1]
-            freq = nb_spike / (t_last_spike - stim_start_time)
-            
+            if per_nth_spike==True:
+                reshaped_spike_times=my_specimen_data.get_spike_times(current_sweep)[:first_nth_spike]
+    
+                nb_spike = len(reshaped_spike_times)
+                t_last_spike = reshaped_spike_times[-1]
+                freq = nb_spike / (t_last_spike - stim_start_time)
+                
+            elif per_time==True:
+                end_time=stim_start_time+(first_x_ms*1e-3)
+                reshaped_spike_times=my_specimen_data.get_spike_times(current_sweep)[my_specimen_data.get_spike_times(current_sweep) <= end_time ]
+                nb_spike = len(reshaped_spike_times)
+                t_last_spike = reshaped_spike_times[-1]
+                freq = nb_spike / (t_last_spike - stim_start_time)
+                
         new_line = pd.Series([int(specimen_id), current_sweep,
                               my_specimen_data.get_sweep_metadata(current_sweep)['aibs_stimulus_amplitude_pa'],
                               freq],
@@ -1493,6 +1439,7 @@ def extract_stim_freq_per_nth_spike(specimen_id,nth_spike,species_sweep_stim_tab
     f_I_table = f_I_table.sort_values(by=["specimen", 'stim_amplitude_pA'])
     f_I_table['specimen'] = pd.Categorical(f_I_table['specimen'])
     return f_I_table
+
 
 def mysigmoid(x,maxi,x0,slope):
     y=maxi/(1+np.exp((x0-x)/slope))
