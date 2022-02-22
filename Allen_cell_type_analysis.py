@@ -1306,30 +1306,51 @@ def fit_exponential_decay(interval_freq_table):
     initial_estimate=[initial_amount,initial_tau,initial_limit]
     parameters_boundaries=([0,0,0],[max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency']),np.inf,max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency'])])
 
-    popt_overall,pcov_overall=curve_fit(my_exponential_decay,x_data,y_data,p0=initial_estimate,bounds=parameters_boundaries,check_finite=False)
+    try:
+        popt_overall,pcov_overall=curve_fit(my_exponential_decay,x_data,y_data,p0=initial_estimate,bounds=parameters_boundaries,check_finite=False)
+        
+        sim_interval=np.arange(1,(max(interval_freq_table['interval'])+1))
+        
+        sim_freq=np.array(my_exponential_decay(sim_interval, *popt_overall))
+        sim_interval=pd.Series(sim_interval)
+        sim_freq=pd.Series(sim_freq)
+        specimen=pd.Series(np.array([interval_freq_table.iloc[0,0]]*len(sim_freq)))
+        new_data=pd.concat([specimen,sim_interval,sim_freq],axis=1)
+        new_data.columns=['specimen','interval','inst_freq']
     
-    sim_interval=np.arange(1,(max(interval_freq_table['interval'])+1))
-    
-    sim_freq=np.array(my_exponential_decay(sim_interval, *popt_overall))
-    sim_interval=pd.Series(sim_interval)
-    sim_freq=pd.Series(sim_freq)
-    specimen=pd.Series(np.array([interval_freq_table.iloc[0,0]]*len(sim_freq)))
-    new_data=pd.concat([specimen,sim_interval,sim_freq],axis=1)
-    new_data.columns=['specimen','interval','inst_freq']
-
-    starting_freq,adapt_cst,limit_freq=popt_overall
-    starting_freq=my_exponential_decay(1.0,*popt_overall)
-    limit_freq=my_exponential_decay(max(interval_freq_table['interval']),*popt_overall)
-    starting_freq,adapt_cst,limit_freq=round(starting_freq,2),round(adapt_cst,2),round(limit_freq,2)
-    
-    steady_state_frequency=limit_freq/starting_freq
-    my_plot=ggplot(interval_freq_table,aes(x=interval_freq_table.columns[1],y=interval_freq_table.columns[2],color="stimulus_amplitude"))+geom_point()+geom_line(new_data,aes(x=new_data.columns[1],y=new_data.columns[2]),color='black')
-    my_plot= my_plot+geom_text(x=(max(interval_freq_table['interval'])+1)/2,y=max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency']),
-                               label="Tau ="+str(round(adapt_cst,2))+"+/-"+str(round(pcov_overall[1,1],2))+
-                               ' , f_in='+str(round(starting_freq,2))+'+/-'+str(round(pcov_overall[0,0],2))+
-                               ', f_lim='+str(round(limit_freq,2))+'+/-'+str(round(pcov_overall[2,2],2)),color="black",size=10)
-    
-    return my_plot,starting_freq,adapt_cst,limit_freq,steady_state_frequency,pcov_overall
+        starting_freq,adapt_cst,limit_freq=popt_overall
+        starting_freq=my_exponential_decay(1.0,*popt_overall)
+        limit_freq=my_exponential_decay(max(interval_freq_table['interval']),*popt_overall)
+        starting_freq,adapt_cst,limit_freq=round(starting_freq,2),round(adapt_cst,2),round(limit_freq,2)
+        
+        steady_state_frequency=limit_freq/starting_freq
+        my_plot=ggplot(interval_freq_table,aes(x=interval_freq_table.columns[1],y=interval_freq_table.columns[2],color="stimulus_amplitude"))+geom_point()+geom_line(new_data,aes(x=new_data.columns[1],y=new_data.columns[2]),color='black')
+        my_plot= my_plot+geom_text(x=(max(interval_freq_table['interval'])+1)/2,y=max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency']),
+                                   label="Tau ="+str(round(adapt_cst,2))+"+/-"+str(round(pcov_overall[1,1],2))+
+                                   ' , f_in='+str(round(starting_freq,2))+'+/-'+str(round(pcov_overall[0,0],2))+
+                                   ', f_lim='+str(round(limit_freq,2))+'+/-'+str(round(pcov_overall[2,2],2)),color="black",size=10)
+        
+        return my_plot,starting_freq,adapt_cst,limit_freq,steady_state_frequency,pcov_overall,popt_overall
+    except (ValueError):
+        print("stopped_valueError")
+        my_plot=np.nan
+        starting_freq=np.nan
+        adapt_cst=np.nan
+        limit_freq=np.nan
+        steady_state_frequency=np.nan
+        pcov_overall=np.nan
+        popt_overall=np.nan
+        return my_plot,starting_freq,adapt_cst,limit_freq,steady_state_frequency,pcov_overall,popt_overall
+    except(RuntimeError):
+        print("Can't fit exponential, least-square optimization failed")
+        my_plot=np.nan
+        starting_freq=np.nan
+        adapt_cst=np.nan
+        limit_freq=np.nan
+        steady_state_frequency=np.nan
+        pcov_overall=np.nan
+        popt_overall=np.nan
+        return my_plot,starting_freq,adapt_cst,limit_freq,steady_state_frequency,pcov_overall,popt_overall
 
 def goodness_of_fit(y_data,simulated_y_data):
     '''
@@ -1466,6 +1487,8 @@ def fit_sigmoid(f_I_table):
         plot of the data point with the sigmoid fit and the linear fit to the linear part of the sigmoid.
     pcov: 2-D array
         The estimated covariance of popt
+    popt: 1D array
+        Estimated parameters of function fit
     
     '''
     x_data=f_I_table.iloc[:,2]
@@ -1505,7 +1528,8 @@ def fit_sigmoid(f_I_table):
             estimated_threshold=np.nan
             my_plot=np.nan
             pcov=np.nan
-            return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov
+            popt=np.nan
+            return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov,popt
         else:
 
             #get index 25% and 75% of max firing rate
@@ -1534,8 +1558,8 @@ def fit_sigmoid(f_I_table):
         estimated_saturation=np.nan
         estimated_threshold=np.nan
         my_plot=np.nan
-        pcov=np.nan
-        return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov
+        pcov=np.nanpopt=np.nan
+        return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov,popt
     except (RuntimeError):
         print("Can't fit sigmoid, least-square optimization failed")
         estimated_gain=np.nan
@@ -1543,7 +1567,8 @@ def fit_sigmoid(f_I_table):
         estimated_threshold=np.nan
         my_plot=np.nan
         pcov=np.nan
-        return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov
+        popt=np.nan
+        return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov,popt
     
     
     
