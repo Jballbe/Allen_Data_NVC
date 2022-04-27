@@ -705,27 +705,7 @@ def plot_stimulus(cell_id, sweep):
                 plt.show()
 
 
-def stimulus_type(cell_id):
-    '''
-    Returns for the different stimuli the sweeps using those stimuli
-    Parameters
-    ----------
-    cell_id : str
-        cell_id found in the id_list from take_id function.
-    Returns
-    -------
-    dict_stimuli : dictionary
-        dictionary with the keys being the different stimulus types and the values are the lists of sweep numbers.
-    '''
-    all_sweeps = ctc.get_ephys_sweeps(cell_id)
-    dict_stimuli = dict()
-    for i in all_sweeps:
-        number = i["sweep_number"]
-        if i["stimulus_name"] not in dict_stimuli:
-            dict_stimuli[i["stimulus_name"]] = [number]
-        else:
-            dict_stimuli[i["stimulus_name"]].append(number)
-    return (dict_stimuli)
+
 
 
 def get_structure_name(species_dict, speciment_index):
@@ -936,7 +916,7 @@ def average_rate(t, spikes, start, end):
     avg_rate = len(spikes_in_interval) / (end - start)
     return avg_rate
 
-
+#%%
 def fit_specimen_fi_slope(stim_amps, avg_rates):
     """
     Fit the rate and stimulus amplitude to a line and return the slope of the fit.
@@ -1131,7 +1111,7 @@ def get_cell_stim_response_table(cell_id,sweep_nb):
                "sampling_rate":current_data["sampling_rate"],
                "input_resistance_mohm":cell_ephys_info(cell_id)['input_resistance_mohm']}
     return(cell_dict)
-    
+#%%
 def extract_inst_freq_table(specimen_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_spike_nb=False,first_nth_spikes=0):
     '''
     Compute the instananous frequency in each interspike interval per sweep for a cell
@@ -1296,17 +1276,18 @@ def fit_exponential_decay(interval_freq_table):
 
     '''
     
-   
-    x_data=interval_freq_table.iloc[:,1]
-    y_data=interval_freq_table.iloc[:,2]
-    
-    initial_amount=np.mean(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency'])
-    initial_tau=1
-    initial_limit=np.mean(interval_freq_table[interval_freq_table['interval']==max(interval_freq_table['interval'])]['inst_frequency'])
-    initial_estimate=[initial_amount,initial_tau,initial_limit]
-    parameters_boundaries=([0,0,0],[max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency']),np.inf,max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency'])])
-
     try:
+        
+        x_data=interval_freq_table.iloc[:,1]
+        y_data=interval_freq_table.iloc[:,2]
+        
+        initial_amount=np.mean(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency'])
+        initial_tau=1
+        initial_limit=np.mean(interval_freq_table[interval_freq_table['interval']==max(interval_freq_table['interval'])]['inst_frequency'])
+        initial_estimate=[initial_amount,initial_tau,initial_limit]
+        parameters_boundaries=([0,0,0],[max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency']),np.inf,max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency'])])
+
+    
         popt_overall,pcov_overall=curve_fit(my_exponential_decay,x_data,y_data,p0=initial_estimate,bounds=parameters_boundaries,check_finite=False)
         
         sim_interval=np.arange(1,(max(interval_freq_table['interval'])+1))
@@ -1324,12 +1305,23 @@ def fit_exponential_decay(interval_freq_table):
         starting_freq,adapt_cst,limit_freq=round(starting_freq,2),round(adapt_cst,2),round(limit_freq,2)
         
         steady_state_frequency=limit_freq/starting_freq
-        my_plot=ggplot(interval_freq_table,aes(x=interval_freq_table.columns[1],y=interval_freq_table.columns[2],color="stimulus_amplitude"))+geom_point()+geom_line(new_data,aes(x=new_data.columns[1],y=new_data.columns[2]),color='black')
-        my_plot= my_plot+geom_text(x=(max(interval_freq_table['interval'])+1)/2,y=max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency']),
-                                   label="Tau ="+str(round(adapt_cst,2))+"+/-"+str(round(pcov_overall[1,1],2))+
-                                   ' , f_in='+str(round(starting_freq,2))+'+/-'+str(round(pcov_overall[0,0],2))+
-                                   ', f_lim='+str(round(limit_freq,2))+'+/-'+str(round(pcov_overall[2,2],2)),color="black",size=10)
+        my_plot=np.nan
+        # my_plot=ggplot(interval_freq_table,aes(x=interval_freq_table.columns[1],y=interval_freq_table.columns[2],color="stimulus_amplitude"))+geom_point()+geom_line(new_data,aes(x=new_data.columns[1],y=new_data.columns[2]),color='black')
+        # my_plot= my_plot+geom_text(x=(max(interval_freq_table['interval'])+1)/2,y=max(interval_freq_table[interval_freq_table['interval']==1]['inst_frequency']),
+        #                            label="Tau ="+str(round(adapt_cst,2))+"+/-"+str(round(pcov_overall[1,1],2))+
+        #                            ' , f_in='+str(round(starting_freq,2))+'+/-'+str(round(pcov_overall[0,0],2))+
+        #                            ', f_lim='+str(round(limit_freq,2))+'+/-'+str(round(pcov_overall[2,2],2)),color="black",size=10)
         
+        return my_plot,starting_freq,adapt_cst,limit_freq,steady_state_frequency,pcov_overall,popt_overall
+    except (StopIteration):
+        print("Stopped Iteration")
+        my_plot=np.nan
+        starting_freq=np.nan
+        adapt_cst=np.nan
+        limit_freq=np.nan
+        steady_state_frequency=np.nan
+        pcov_overall=np.nan
+        popt_overall=np.nan
         return my_plot,starting_freq,adapt_cst,limit_freq,steady_state_frequency,pcov_overall,popt_overall
     except (ValueError):
         print("stopped_valueError")
@@ -1398,7 +1390,7 @@ def extract_ISI(spike_times):
     if len(spike_times) <= 1:
         return np.array([])
     return spike_times[1:] - spike_times[:-1]
-
+#%%
 def extract_stim_freq(specimen_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0):
     '''
     Function to extract for each specified specimen_id and the corresponding stimulus the frequency of the response
@@ -1413,6 +1405,31 @@ def extract_stim_freq(specimen_id,species_sweep_stim_table,per_time=False,first_
     f_I_table : DataFrame
         DataFrame with a column "specimen_id"(factor),the sweep number (int),the stimulus amplitude in pA(float),and the computed frequency of the response (float).
     '''
+    print(specimen_id)
+    # import os
+    # is_file_ok=False
+    # while is_file_ok ==False:
+    #     try:
+    #         index_stim = species_sweep_stim_table.columns.get_loc('Long Square')
+    #         index_specimen = species_sweep_stim_table.index[species_sweep_stim_table["specimen_id"] == specimen_id][0]
+            
+    #         my_specimen_data = ctc.get_ephys_data(specimen_id)
+    #         sweep_numbers = species_sweep_stim_table.iloc[index_specimen, index_stim]
+    #         index_range=my_specimen_data.get_sweep(sweep_numbers[0])["index_range"]
+    #         is_file_ok=True
+    #         print("ok")
+    #     except (OSError):
+    #         try:
+    #             os.remove(str("/Users/julienballbe/My_Work/Allen_Data/Common_Script/Full_analysis_cell_types/specimen_"+str(specimen_id)+"/ephys.nwb"))
+    #         except(FileNotFoundError):
+    #             os.remove(str("/Users/julienballbe/My_Work/Allen_Data/Common_Script/Full_analysis_cell_types/specimen_"+str(specimen_id)+"/ephys_sweeps.json"))
+    #             os.rmdir("/Users/julienballbe/My_Work/Allen_Data/Common_Script/Full_analysis_cell_types/specimen_"+str(specimen_id))
+    #         print("Truncated file for specimen ",str(specimen_id) ,". File removed to be redownloaded")
+    #         continue
+
+    
+            
+    # print(specimen_id)
     f_I_table = pd.DataFrame(columns=['specimen', 'sweep', 'stim_amplitude_pA', 'frequence_Hz'])
     index_stim = species_sweep_stim_table.columns.get_loc('Long Square')
     index_specimen = species_sweep_stim_table.index[species_sweep_stim_table["specimen_id"] == specimen_id][0]
@@ -1422,7 +1439,9 @@ def extract_stim_freq(specimen_id,species_sweep_stim_table,per_time=False,first_
     
     
     for current_sweep in sweep_numbers:
+        
         index_range=my_specimen_data.get_sweep(current_sweep)["index_range"]
+        
         sampling_rate=my_specimen_data.get_sweep(current_sweep)["sampling_rate"]
         current_stim_array=(my_specimen_data.get_sweep(current_sweep)["stimulus"][0:index_range[1]+1])* 1e12 #to pA
     
@@ -1432,10 +1451,11 @@ def extract_stim_freq(specimen_id,species_sweep_stim_table,per_time=False,first_
         
         stim_start_time=current_time_array[stim_start_index]
        
-        
+       
         
         if len(my_specimen_data.get_spike_times(current_sweep)) <2:
             freq = 0
+
         else :
             if per_nth_spike==True:
                 reshaped_spike_times=my_specimen_data.get_spike_times(current_sweep)[:first_nth_spike]
@@ -1446,11 +1466,14 @@ def extract_stim_freq(specimen_id,species_sweep_stim_table,per_time=False,first_
                 
             elif per_time==True:
                 end_time=stim_start_time+(first_x_ms*1e-3)
+
                 reshaped_spike_times=my_specimen_data.get_spike_times(current_sweep)[my_specimen_data.get_spike_times(current_sweep) <= end_time ]
                 nb_spike = len(reshaped_spike_times)
-                t_last_spike = reshaped_spike_times[-1]
-                freq = nb_spike / (t_last_spike - stim_start_time)
-                
+                if nb_spike !=0:
+                    t_last_spike = reshaped_spike_times[-1]
+                    freq = nb_spike / (t_last_spike - stim_start_time)
+                else:
+                    freq=0
         new_line = pd.Series([int(specimen_id), current_sweep,
                               my_specimen_data.get_sweep_metadata(current_sweep)['aibs_stimulus_amplitude_pa'],
                               freq],
@@ -1460,7 +1483,7 @@ def extract_stim_freq(specimen_id,species_sweep_stim_table,per_time=False,first_
     f_I_table = f_I_table.sort_values(by=["specimen", 'stim_amplitude_pA'])
     f_I_table['specimen'] = pd.Categorical(f_I_table['specimen'])
     return f_I_table
-
+    
 
 def mysigmoid(x,maxi,x0,slope):
     y=maxi/(1+np.exp((x0-x)/slope))
@@ -1491,28 +1514,31 @@ def fit_sigmoid(f_I_table):
         Estimated parameters of function fit
     
     '''
-    x_data=f_I_table.iloc[:,2]
-    y_data=f_I_table.iloc[:,3]
-    
-    
-    ##Get the initial estimate for the fit of sigmoid
-    #Get the maximum firing rate of the data
-    maxi=max(x_data)
-    
-    #Get the index corresponding to the median non-zero firing rate
-    without_zero_index=next(x for x, val in enumerate(y_data) if val >0 )
-    median_firing_rate_index=next(x for x, val in enumerate(y_data) if val >= np.median(y_data.iloc[without_zero_index:]))
-    #Get the stimulus amplitude correspondingto the median non-zero firing rate
-
-    x0=x_data.iloc[median_firing_rate_index]
-
-    #Get the slope from the linear fit of the firing rate
-    slope=fit_specimen_fi_slope(x_data,y_data)[0]
-
-
-    initial_estimate=[maxi,x0,slope]
-    parameters_boundaries=([0,0,0],[np.inf,np.inf,np.inf])
     try:
+        x_data=f_I_table.iloc[:,2]
+        y_data=f_I_table.iloc[:,3]
+        
+        
+        ##Get the initial estimate for the fit of sigmoid
+        #Get the maximum firing rate of the data
+        maxi=max(x_data)
+        
+        #Get the index corresponding to the median non-zero firing rate
+        
+
+        without_zero_index=next(x for x, val in enumerate(y_data) if val >0 )
+        median_firing_rate_index=next(x for x, val in enumerate(y_data) if val >= np.median(y_data.iloc[without_zero_index:]))
+        #Get the stimulus amplitude correspondingto the median non-zero firing rate
+    
+        x0=x_data.iloc[median_firing_rate_index]
+    
+        #Get the slope from the linear fit of the firing rate
+        slope=fit_specimen_fi_slope(x_data,y_data)[0]
+    
+    
+        initial_estimate=[maxi,x0,slope]
+        parameters_boundaries=([0,0,0],[np.inf,np.inf,np.inf])
+        
 
         popt,pcov=curve_fit(mysigmoid,x_data,y_data,p0=initial_estimate,bounds=parameters_boundaries,check_finite=False)
         
@@ -1546,22 +1572,35 @@ def fit_sigmoid(f_I_table):
             else:
                 estimated_saturation=np.nan
             estimated_gain=linear_estimated_slope
-            
-            my_plot=ggplot(f_I_table,aes(x=f_I_table.columns[2],y=f_I_table.columns[3]))+geom_point()+geom_line(new_data,aes(x=new_data.columns[0],y=new_data.columns[1]),color='blue')+geom_abline(aes(intercept=linear_estimated_intercept,slope=linear_estimated_slope))
-            my_plot+=geom_text(x=10,y=estimated_saturation,label="Gain="+str(round(estimated_gain,2))+
-                               ', thresh='+str(round(estimated_threshold,2))+
-                               ', sat='+str(round(estimated_saturation,2))+'+/-'+str(round(pcov[0,0],2)),size=10,color="black")
+            my_plot=np.nan
+            # my_plot=ggplot(f_I_table,aes(x=f_I_table.columns[2],y=f_I_table.columns[3]))+geom_point()+geom_line(new_data,aes(x=new_data.columns[0],y=new_data.columns[1]),color='blue')+geom_abline(aes(intercept=linear_estimated_intercept,slope=linear_estimated_slope))
+            # my_plot+=geom_text(x=10,y=estimated_saturation,label="Gain="+str(round(estimated_gain,2))+
+            #                    ', thresh='+str(round(estimated_threshold,2))+
+            #                    ', sat='+str(round(estimated_saturation,2))+'+/-'+str(round(pcov[0,0],2)),size=10,color="black")
             return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov,popt
-    except (ValueError):
-        print("stopped_valueError")
+    except (StopIteration):
+        print("Stopped Iteration")
+        print(f_I_table.iloc[1,1])
         estimated_gain=np.nan
         estimated_saturation=np.nan
         estimated_threshold=np.nan
         my_plot=np.nan
-        pcov=np.nanpopt=np.nan
+        pcov=np.nan
+        popt=np.nan
+        return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov,popt
+    except (ValueError):
+        print("stopped_valueError")
+        print(f_I_table.iloc[1,1])
+        estimated_gain=np.nan
+        estimated_saturation=np.nan
+        estimated_threshold=np.nan
+        my_plot=np.nan
+        pcov=np.nan
+        popt=np.nan
         return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov,popt
     except (RuntimeError):
         print("Can't fit sigmoid, least-square optimization failed")
+        print(f_I_table.iloc[1,1])
         estimated_gain=np.nan
         estimated_saturation=np.nan
         estimated_threshold=np.nan
@@ -1570,8 +1609,7 @@ def fit_sigmoid(f_I_table):
         popt=np.nan
         return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov,popt
     
-    
-    
+
 #%%General function to extract parameters
 def extract_feature(specimen_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0):
     '''
@@ -1600,11 +1638,13 @@ def extract_feature(specimen_id,species_sweep_stim_table,per_time=False,first_x_
     '''
     mycolumns=['Cell_id','Gain','Threshold','Saturation','Adapt_cst','Starting_frequency','Limit_frequency','Steady_state_frequency']
     full_table=pd.DataFrame(columns=mycolumns)
+
     for current_specimen_id in specimen_id:
-        f_I_table=extract_stim_freq(specimen_id,species_sweep_stim_table,per_time,first_x_ms,per_nth_spike,first_nth_spike)
+
+        f_I_table=extract_stim_freq(current_specimen_id,species_sweep_stim_table,per_time,first_x_ms,per_nth_spike,first_nth_spike)
         f_I_gain,f_I_threshold,f_I_saturation,f_I_plot,f_I_pcov,f_I_popt=fit_sigmoid(f_I_table)
         
-        inst_freq_table=table_to_fit(extract_inst_freq_table(specimen_id,species_sweep_stim_table,per_time,first_x_ms,per_spike_nb=per_nth_spike,first_nth_spikes=first_nth_spike))
+        inst_freq_table=table_to_fit(extract_inst_freq_table(current_specimen_id,species_sweep_stim_table,per_time,first_x_ms,per_spike_nb=per_nth_spike,first_nth_spikes=first_nth_spike))
         inst_plot,inst_starting_freq,inst_adapt_cst,inst_limit_freq,inst_steady_state_frequency,inst_pcov,inst_popt=fit_exponential_decay(inst_freq_table)
         
         
@@ -1621,7 +1661,156 @@ def extract_feature(specimen_id,species_sweep_stim_table,per_time=False,first_x_
         full_table=full_table.append(new_line, ignore_index=True)
     full_table['Cell_id']=pd.Categorical(full_table['Cell_id'])
     return full_table
+#%%
 
+
+#%%My tables
+# mycol=['cell_id',
+#        'Gain',
+#        'Thresold',
+#        'Saturation',
+#        'Adapt_cst',
+#        'Init_freq',
+#        'Limit_freq',
+#        'Steady_state_freq']
+# units=['--',
+#        'Hz/pA',
+#        'pA',
+#        'Hz',
+#        'spike_index',
+#        'WU',
+#        'WU',
+#        'WU']
+# first_line=pd.Series(mycol,index=mycol)
+# second_line=pd.Series(units,index=mycol)
+# first_two_lines=pd.DataFrame([first_line,second_line])
+
+# main_start_time=time.time()
+# start_time=time.time()
+
+# features_5ms=extract_feature(mouse_id_list,mouse_sweep_stim_table,per_time=True,first_x_ms=5)
+# features_5ms=features_5ms.reindex(columns=mycol)
+# File_5ms=pd.concat([first_two_lines,features_5ms])
+# File_5ms.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/"+str(features_5ms)+".csv"),na_rep="nan",index=False)
+# end_5ms=time.time()
+# print("time for 5ms=",end_5ms-start_time,"s")
+
+# start_time=time.time()
+# features_10ms=extract_feature(mouse_id_list,mouse_sweep_stim_table,per_time=True,first_x_ms=10)
+# features_10ms=features_10ms.reindex(columns=mycol)
+# File_10ms=pd.concat([first_two_lines,features_10ms])
+# File_10ms.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/"+str(features_10ms)+".csv"),na_rep="nan",index=False)
+# end_10ms=time.time()
+
+# print("time for 10ms=",end_10ms-start_time,"s")
+# start_time=time.time()
+# features_25ms=extract_feature(mouse_id_list,mouse_sweep_stim_table,per_time=True,first_x_ms=25)
+# features_25ms=features_25ms.reindex(columns=mycol)
+# File_25ms=pd.concat([first_two_lines,features_25ms])
+# File_25ms.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/"+str(features_25ms)+".csv"),na_rep="nan",index=False)
+# end_25ms=time.time()
+# print("time for 25ms=",end_25ms-start_time,"s")
+
+# start_time=time.time()
+# features_50ms=extract_feature(mouse_id_list,mouse_sweep_stim_table,per_time=True,first_x_ms=50)
+# features_50ms=features_50ms.reindex(columns=mycol)
+# File_50ms=pd.concat([first_two_lines,features_50ms])
+# File_50ms.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/"+str(features_50ms)+".csv"),na_rep="nan",index=False)
+# end_50ms=time.time()
+# print("time for 50ms=",end_50ms-start_time,"s")
+
+# start_time=time.time()
+# features_100ms=extract_feature(mouse_id_list,mouse_sweep_stim_table,per_time=True,first_x_ms=100)
+# features_100ms=features_100ms.reindex(columns=mycol)
+# File_100ms=pd.concat([first_two_lines,features_100ms])
+# File_100ms.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/"+str(features_100ms)+".csv"),na_rep="nan",index=False)
+# end_100ms=time.time()
+# print("time for 100ms=",end_100ms-start_time,"s")
+
+# start_time=time.time()
+# features_250ms=extract_feature(mouse_id_list,mouse_sweep_stim_table,per_time=True,first_x_ms=250)
+# features_250ms=features_250ms.reindex(columns=mycol)
+# File_250ms=pd.concat([first_two_lines,features_250ms])
+# File_250ms.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/"+str(features_250ms)+".csv"),na_rep="nan",index=False)
+# end_250ms=time.time()
+# print("time for 250ms=",end_250ms-start_time,"s")
+
+# start_time=time.time()
+# features_500ms=extract_feature(mouse_id_list,mouse_sweep_stim_table,per_time=True,first_x_ms=500)
+# features_500ms=features_500ms.reindex(columns=mycol)
+# File_500ms=pd.concat([first_two_lines,features_500ms])
+# File_500ms.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/"+str(features_500ms)+".csv"),na_rep="nan",index=False)
+# end_500ms=time.time()
+# print("time for 500ms=",end_500ms-start_time,"s")
+
+# start_time=time.time()
+# features_1000ms=extract_feature(mouse_id_list,mouse_sweep_stim_table,per_time=True,first_x_ms=1000)
+# features_1000ms=features_1000ms.reindex(columns=mycol)
+# File_1000ms=pd.concat([first_two_lines,features_1000ms])
+# File_1000ms.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/"+str(features_1000ms)+".csv"),na_rep="nan",index=False)
+# end_1000ms=time.time()
+# print("time for 1000ms=",end_1000ms-start_time,"s")
+
+# start_time=time.time()
+# features_4spikes=extract_feature(mouse_id_list,mouse_sweep_stim_table,per_nth_spike=True,first_nth_spike=4)
+# features_4spikes=features_4spikes.reindex(columns=mycol)
+# File_4spikes=pd.concat([first_two_lines,features_4spikes])
+# File_4spikes.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/"+str(features_4spikes)+".csv"),na_rep="nan",index=False)
+# end_4spike=time.time()
+# print("time for 4spikes=",end_4spike-start_time,"s")
+
+# start_time=time.time()
+# features_5spikes=extract_feature(mouse_id_list,mouse_sweep_stim_table,per_nth_spike=True,first_nth_spike=5)
+# features_5spikes=features_5spikes.reindex(columns=mycol)
+# File_5spikes=pd.concat([first_two_lines,features_5spikes])
+# File_5spikes.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/"+str(features_5spikes)+".csv"),na_rep="nan",index=False)
+# end_5spike=time.time()
+# print("time for 5spikes=",end_5spike-start_time,"s")
+
+# start_time=time.time()
+# features_6spikes=extract_feature(mouse_id_list,mouse_sweep_stim_table,per_nth_spike=True,first_nth_spike=6)
+# features_6spikes=features_6spikes.reindex(columns=mycol)
+# File_6spikes=pd.concat([first_two_lines,features_6spikes])
+# File_6spikes.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/"+str(features_6spikes)+".csv"),na_rep="nan",index=False)
+# end_6spike=time.time()
+# print("time for 6spikes=",end_6spike-start_time,"s")
+
+# start_time=time.time()
+# features_7spikes=extract_feature(mouse_id_list,mouse_sweep_stim_table,per_nth_spike=True,first_nth_spike=7)
+# features_7spikes=features_7spikes.reindex(columns=mycol)
+# File_7spikes=pd.concat([first_two_lines,features_7spikes])
+# File_7spikes.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/"+str(features_7spikes)+".csv"),na_rep="nan",index=False)
+# end_7spike=time.time()
+# print("time for 7spikes=",end_7spike-start_time,"s")
+
+# start_time=time.time()
+# features_8spikes=extract_feature(mouse_id_list,mouse_sweep_stim_table,per_nth_spike=True,first_nth_spike=8)
+# features_8spikes=features_8spikes.reindex(columns=mycol)
+# File_8spikes=pd.concat([first_two_lines,features_8spikes])
+# File_8spikes.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/"+str(features_8spikes)+".csv"),na_rep="nan",index=False)
+# end_8spike=time.time()
+# print("time for 8spikes=",end_8spike-start_time,"s")
+
+# start_time=time.time()
+# features_9spikes=extract_feature(mouse_id_list,mouse_sweep_stim_table,per_nth_spike=True,first_nth_spike=9)
+# features_9spikes=features_9spikes.reindex(columns=mycol)
+# File_9spikes=pd.concat([first_two_lines,features_9spikes])
+# File_9spikes.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/"+str(features_9spikes)+".csv"),na_rep="nan",index=False)
+# end_9spike=time.time()
+# print("time for 9spikes=",end_9spike-start_time,"s")
+
+# start_time=time.time()
+# features_10spikes=extract_feature(mouse_id_list,mouse_sweep_stim_table,per_nth_spike=True,first_nth_spike=10)
+# features_10spikes=features_10spikes.reindex(columns=mycol)
+# File_10spikes=pd.concat([first_two_lines,features_10spikes])
+# File_10spikes.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/"+str(features_10spikes)+".csv"),na_rep="nan",index=False)
+# end_10spike=time.time()
+# print("time for 10spikes=",end_10spike-start_time,"s")
+# start_time=time.time()
+
+# main_end_time=time.time()
+# print("Total time=",main_end_time-main_start_time,'s')
+    
 #%%Check slope of sigmoid
 from scipy.misc import derivative
 def trust_sigmoid(new_x_data,maxi,x0,slope,slope_confidence_threshold):
@@ -1632,7 +1821,7 @@ def trust_sigmoid(new_x_data,maxi,x0,slope,slope_confidence_threshold):
         print("slope to high")
         return False
     elif my_derivative[-1]==0:
-        print("end slope to low")
+        print("end slope too low")
         return False
     
     

@@ -10,14 +10,15 @@ import allensdk
 import json
 from allensdk.core.cell_types_cache import CellTypesCache
 from allensdk.api.queries.cell_types_api import CellTypesApi
+from allensdk.internal.model.biophysical import ephys_utils
 import webbrowser
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from ast import literal_eval
 import time
-from plotnine import ggplot, geom_line, aes, geom_abline, geom_point, geom_text, labels
-
+from plotnine import ggplot, geom_line, aes, geom_abline, geom_point, geom_text, labels,geom_histogram
+import scipy
 from scipy.stats import linregress
 from scipy import optimize
 from scipy.optimize import curve_fit
@@ -35,9 +36,10 @@ from allensdk.api.queries.cell_types_api import CellTypesApi
 import os
 from lmfit.models import LinearModel, StepModel, ExpressionModel, Model,ExponentialModel,ConstantModel
 from lmfit import Parameters, Minimizer,fit_report
-from plotnine.scales import scale_y_continuous
+from plotnine.scales import scale_y_continuous,ylim,xlim,scale_color_manual
 from plotnine.labels import xlab
 from sklearn.metrics import mean_squared_error
+import seaborn as sns
 
 ctc= CellTypesCache(manifest_file="/Users/julienballbe/My_Work/Allen_Data/Common_Script/Full_analysis_cell_types/manifest.json")
 full_analysis_cells=get_cells("/Users/julienballbe/My_Work/Allen_Data/Common_Script/Full_analysis_cell_types/manifest","Mouse")
@@ -47,8 +49,47 @@ mouse_id_list=mouse_sweep_stim_table['specimen_id']
 mouse_id_list=pd.Series(mouse_id_list)
 
 #%%Randomization
-id_list=random_id_list(mouse_id_list,20)
+id_list=random_id_list(mouse_id_list,40)
 test_id=id_list[7]
+
+#%%
+mycol=['Cell_id','Starting_frequency_A','Adapt_cst_B','Steady_state_frequency_C']
+units=['--',
+        'Hz_rel',
+        'Spike_index',
+        'Hz_rel']
+new_fit_comparison_table=pd.DataFrame(columns=mycol)
+first_line=pd.Series(mycol,index=mycol)
+second_line=pd.Series(units,index=mycol)
+first_two_lines=pd.DataFrame([first_line,second_line])
+mylist=mouse_id_list
+number_done=0
+total_time=0
+for cell_id in mylist:
+    start_time=time.time()
+    A,B,C,plot=new_fit_exponential_decay(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=1000,do_plot=False)
+    new_line=pd.Series([str(cell_id),A,B,C],
+                   index=['cell_id','Starting_frequency_A','Adapt_cst_B', 'Steady_state_frequency_C'])
+    new_fit_comparison_table=new_fit_comparison_table.append(new_line,ignore_index=True)
+    end_time=time.time()
+    number_done+=1
+    number_remaining=len(mylist)-number_done
+    total_time+=end_time-start_time
+    remaining_time=number_remaining*total_time/number_done
+    total_remaining_minutes=remaining_time//60
+    remaining_hours=total_remaining_minutes//60
+    remaining_minutes=total_remaining_minutes%60
+    remaining_seconds=remaining_time%60
+    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
+
+adaptation_table=pd.concat([first_two_lines,new_fit_comparison_table])
+adaptation_table=adaptation_table.iloc[1:,:]
+adaptation_table.to_csv(path_or_buf="/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_04_14/Adaptation_computation_1000ms.csv",na_rep="nan",index=False)
+print("Total time= ",total_time)
+
+
+    
+    
 #%%5ms
 
 mycol=['Cell_id','Gain','Threshold','Saturation','Neuron_type','NRMSE_sigmoid','NRMSE_composite','Parameter_amplitude','Parameter_center','Parameter_sigma','Starting_frequency_A','Adapt_cst_B','Steady_state_frequency_C','Normalized_starting_freq_Anorm','Normalized_ss_freq_Cnorm','Input_resistance_MOhm']
@@ -884,7 +925,7 @@ def extract_stim_freq(specimen_id,species_sweep_stim_table,per_time=False,first_
         DataFrame with a column "specimen_id"(factor),the sweep number (int),the stimulus amplitude in pA(float),and the computed frequency of the response (float).
     '''
     
-    f_I_table = pd.DataFrame(columns=['specimen', 'sweep', 'stim_amplitude_pA', 'frequence_Hz'])
+    f_I_table = pd.DataFrame(columns=['specimen', 'sweep_number', 'Stim_amp_pA', 'Frequency_Hz'])
     index_stim = species_sweep_stim_table.columns.get_loc('Long Square')
     index_specimen = species_sweep_stim_table.index[species_sweep_stim_table["specimen_id"] == specimen_id][0]
     
@@ -907,7 +948,7 @@ def extract_stim_freq(specimen_id,species_sweep_stim_table,per_time=False,first_
        
        
         
-        if len(my_specimen_data.get_spike_times(current_sweep)) <2:
+        if len(my_specimen_data.get_spike_times(current_sweep)) <1:
             freq = 0
 
         else :
@@ -926,19 +967,20 @@ def extract_stim_freq(specimen_id,species_sweep_stim_table,per_time=False,first_
                 nb_spike = len(reshaped_spike_times)
 
                 if nb_spike !=0:
-                    #t_last_spike = reshaped_spike_times[-1]
-                    #freq = nb_spike / (t_last_spike - stim_start_time)
+                    
                     freq=nb_spike/(first_x_ms*1e-3)
                 else:
                     freq=0
         new_line = pd.Series([int(specimen_id), current_sweep,
                               my_specimen_data.get_sweep_metadata(current_sweep)['aibs_stimulus_amplitude_pa'],
                               freq],
-                             index=['specimen', 'sweep', 'stim_amplitude_pA', 'frequence_Hz'])
+                             index=['specimen', 'sweep_number', 'Stim_amp_pA', 'Frequency_Hz'])
         f_I_table = f_I_table.append(new_line, ignore_index=True)
     
-    f_I_table = f_I_table.sort_values(by=["specimen", 'stim_amplitude_pA'])
+    f_I_table = f_I_table.sort_values(by=["specimen", 'Stim_amp_pA'])
     f_I_table['specimen'] = pd.Categorical(f_I_table['specimen'])
+    f_I_table['sweep_number']=np.int64(f_I_table['sweep_number'])
+    f_I_table=pd.merge(f_I_table,coarse_or_fine_sweep(specimen_id),on='sweep_number')
     return f_I_table
     
 
@@ -1218,6 +1260,7 @@ def table_to_fit(inst_freq_table):
 
     return interval_freq_table
 
+
 def my_exponential_decay(x,A,B,C):
     '''
     Parameters
@@ -1281,7 +1324,16 @@ def new_fit_exponential_decay(cell_id,species_sweep_stim_table,per_time=False,fi
         else:
             str_cell_id=str(cell_id)
         interval_freq_table=extract_inst_freq_table(cell_id,species_sweep_stim_table,per_time=per_time,first_x_ms=first_x_ms,per_spike_nb=per_spike_nb,first_nth_spikes=first_nth_spike)
+        if interval_freq_table.shape[0]==0:
+            print('not enough spike')
+            my_plot=np.nan
+            A=np.nan
+            B=np.nan
+            C=np.nan
+
+            return A,B,C,my_plot
         x_data=interval_freq_table.iloc[:,1]
+        
         median_table=interval_freq_table.groupby(by=["interval"],dropna=True).median()
         median_table["count_weights"]=pd.DataFrame(interval_freq_table.groupby(by=["interval"],dropna=True).count()).iloc[:,-1]
         median_table["interval"]=np.arange(1,(median_table.shape[0]+1))
@@ -1321,7 +1373,7 @@ def new_fit_exponential_decay(cell_id,species_sweep_stim_table,per_time=False,fi
         params['decay'].set(brute_step=decay_step)
         params['steady_state'].set(brute_step=0.1,min=0)
         
-
+        
            
         #data=my_exponential_decay(x=median_table["interval"], A=0.5, B=2, C=0.1)
         fitter=Minimizer(expo_to_minimize,params,fcn_args=(median_table["interval"],median_table["inst_frequency"]))
@@ -1494,7 +1546,8 @@ def plot_results_brute(result, best_vals=True, varlabels=None,
                 ax.plot(np.minimum.reduce(result.brute_Jout, axis=red_axis),
                         np.unique(result.brute_grid[i]), 'o', ms=3)
                 ax.invert_xaxis()
-                ax.set_ylabel(varlabels[i])
+                ax.set_ylabel(varlabels[i],rotation="horizontal")
+
                 if i != npars-1:
                     ax.set_xticks([])
                 else:
@@ -1523,7 +1576,7 @@ def plot_results_brute(result, best_vals=True, varlabels=None,
                 if j != npars-1:
                     ax.set_xticks([])
                 else:
-                    ax.set_xlabel(varlabels[i])
+                    ax.set_xlabel(varlabels[i],rotation="vertical")
                 if j - i >= 2:
                     axes[i, j].axis('off')
 
@@ -1656,7 +1709,10 @@ def fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first_x_ms=0,pe
          slope,intercept=fit_specimen_fi_slope(x_data,y_data)
          last_zero_x=x_data.iloc[last_zero_index]
          first_non_zero_x=x_data.iloc[without_zero_index]
-        
+         Q3_index=next(x for x, val in enumerate(y_data) if val >0.75*max(y_data) )
+         Q3=y_data.iloc[Q3_index]
+         Q1_index=next(x for x, val in enumerate(y_data) if val >0.25*max(y_data) )
+         Q1=y_data.iloc[Q1_index]
          # Define sigmoid function model
          sigmoid_mod=StepModel(form='logistic',prefix='sigmoid_')
          
@@ -1677,7 +1733,7 @@ def fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first_x_ms=0,pe
         
          #Create more continuous x_data in the same range, compute corresponding y_data according to computed parameters
          new_x_data=pd.Series(np.arange(min(x_data),max(x_data),1))
-         NRMSE_sigmoid=mean_squared_error(y_data, sigmoid_function(x_data,amplitude,center,sigma),squared=(False))/max(y_data)
+         NRMSE_sigmoid=mean_squared_error(y_data, sigmoid_function(x_data,amplitude,center,sigma),squared=(False))/(Q3-Q1)
 
          
          
@@ -1701,21 +1757,21 @@ def fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first_x_ms=0,pe
          new_sigmoid_center=compo_out.best_values['new_sigmoid_center']
          new_sigmoid_sigma=compo_out.best_values['new_sigmoid_sigma']
          step_jump_x=compo_out.best_values['step_center']
-         
-         NRMSE_composite=mean_squared_error(y_data,pd.Series(compo(x_data,step_jump_x,new_sigmoid_amplitude,new_sigmoid_center,new_sigmoid_sigma)),squared=False )/max(y_data)
+         step_amplitude=1
+         NRMSE_composite=mean_squared_error(y_data,pd.Series(compo(x_data,step_jump_x,step_amplitude,new_sigmoid_amplitude,new_sigmoid_center,new_sigmoid_sigma)),squared=False )/(Q3-Q1)
        
          if NRMSE_composite<=NRMSE_sigmoid:
              # in case where step function + sigmoid function fits better (Type II)
-             computed_y_data=pd.Series(compo(new_x_data,step_jump_x,new_sigmoid_amplitude,new_sigmoid_center,new_sigmoid_sigma))
+             computed_y_data=pd.Series(compo(x_data,step_jump_x,step_amplitude,new_sigmoid_amplitude,new_sigmoid_center,new_sigmoid_sigma))
             
              #get index 25% and 75% of max firing rate
 
              twentyfive_index=next(x for x, val in enumerate(computed_y_data) if val >(0.25*max(computed_y_data)))
              seventyfive_index=next(x for x, val in enumerate(computed_y_data) if val >(0.75*max(computed_y_data)))
              #fit linear line to linear sigmoid portion
-             estimated_slope,estimated_intercept=fit_specimen_fi_slope(new_x_data.iloc[twentyfive_index:seventyfive_index],compo(new_x_data.iloc[twentyfive_index:seventyfive_index],step_jump_x,new_sigmoid_amplitude,new_sigmoid_center,new_sigmoid_sigma))
+             estimated_slope,estimated_intercept=fit_specimen_fi_slope(new_x_data.iloc[twentyfive_index:seventyfive_index],compo(new_x_data.iloc[twentyfive_index:seventyfive_index],step_jump_x,step_amplitude,new_sigmoid_amplitude,new_sigmoid_center,new_sigmoid_sigma))
              estimated_threshold=step_jump_x
-             my_derivative=np.array(derivative(compo,new_x_data,dx=1e-1,args=(step_jump_x,new_sigmoid_amplitude,new_sigmoid_center,new_sigmoid_sigma)))
+             my_derivative=np.array(derivative(compo,new_x_data,dx=1e-1,args=(step_jump_x,step_amplitude,new_sigmoid_amplitude,new_sigmoid_center,new_sigmoid_sigma)))
              end_slope=np.mean(my_derivative[-10:])
              parameter_amplitude=new_sigmoid_amplitude
              parameter_center=new_sigmoid_center
@@ -1789,7 +1845,360 @@ def fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first_x_ms=0,pe
          #return(np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
          return np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan
     
+def sigmoid_to_minimize(params,x_data,data):
+    sigmoid_amplitude=params['sigmoid_amplitude']
+    sigmoid_center=params["sigmoid_center"]
+    sigmoid_sigma=params["sigmoid_sigma"]
+    step_amplitude=params['step_amplitude']
+    step_center=params['step_center']
+    step_sigma=0.00001
+    model=(sigmoid_amplitude*(1-(1/(1+np.exp((x_data-sigmoid_center)/sigmoid_sigma)))))*(step_amplitude*(1-(1/(1+np.exp((x_data-step_center)/step_sigma)))))
+    return model-data
+    
+
+def single_sigmoid_to_minimize(params,x_data,data):
+    single_sigmoid_amplitude=params['single_sigmoid_amplitude']
+    single_sigmoid_center=params['single_sigmoid_center']
+    single_sigmoid_sigma=params['single_sigmoid_sigma']
+    
+    model=single_sigmoid_amplitude*(1-(1/(1+np.exp((x_data-single_sigmoid_center)/single_sigmoid_sigma))))
+    return model-data
+
+def new_fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0,do_plot=False):
+    try:
+
          
+         if type(cell_id)!=np.float64:
+             str_cell_id=str(cell_id)
+             cell_id=np.float64(cell_id)
+         else:
+             str_cell_id=str(cell_id)
+         # extract f_I table for the specimen and use only the "coarse" annotated sweeps
+         f_I_table=extract_stim_freq(float(cell_id), species_sweep_stim_table,per_time=per_time,first_x_ms=first_x_ms,per_nth_spike=per_nth_spike,first_nth_spike=first_nth_spike)
+         coarse_f_I_table=f_I_table[f_I_table['stimulus_description']=='COARSE']
+         if max(coarse_f_I_table.loc[:,'Frequency_Hz'])==0:
+             fit='No_COARSE_Response'
+             return (fit,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+         x_data=coarse_f_I_table.loc[:,'Stim_amp_pA']
+         y_data=coarse_f_I_table.loc[:,"Frequency_Hz"]
+         
+         #get initial estimate of parameters for single sigmoid fit
+         without_zero_index=next(x for x, val in enumerate(y_data) if val >0 )
+
+         
+         median_firing_rate_index=next(x for x, val in enumerate(y_data) if val >= np.median(y_data.iloc[without_zero_index:]))
+         #Get the stimulus amplitude correspondingto the median non-zero firing rate
+         x0=x_data.iloc[median_firing_rate_index]
+         #Get the slope from the linear fit of the firing rate
+         slope,intercept=fit_specimen_fi_slope(x_data,y_data)
+         
+         first_non_zero_x=x_data.iloc[without_zero_index]
+         new_x_data=pd.Series(np.arange(min(x_data),max(x_data),1))
+         first_non_zero_extended_x_index=next(x for x, val in enumerate(new_x_data) if val >=first_non_zero_x )
+         best_single_amplitude=np.nan
+         best_single_center=np.nan
+         best_single_sigma=np.nan
+         best_compo_QNRMSE=None
+         best_step_amplitude=np.nan
+         best_step_center=np.nan
+         best_step_sigma=np.nan
+         best_sigmoid_amplitude=np.nan
+         best_sigmoid_center=np.nan
+         best_sigmoid_sigma=np.nan
+
+         ##First, try to fit a single sigmoid
+         params_single_sigmoid=Parameters()
+         params_single_sigmoid.add('single_sigmoid_amplitude',value=max(y_data),min=0)
+         params_single_sigmoid.add('single_sigmoid_center',value=x0)
+         params_single_sigmoid.add('single_sigmoid_sigma',value=500,min=0.1)
+         params_single_sigmoid['single_sigmoid_amplitude'].set(brute_step=20)
+         params_single_sigmoid['single_sigmoid_center'].set(brute_step=21)
+         params_single_sigmoid['single_sigmoid_sigma'].set(brute_step=31)
+
+         single_sigmoid_fitter=Minimizer(single_sigmoid_to_minimize,params_single_sigmoid,fcn_args=(x_data,y_data))
+
+         single_result_brute=single_sigmoid_fitter.minimize(method='brute',Ns=10,keep=10)
+
+         best_single_QNRMSE=None
+         fit='Failed'
+         typeII_tested=False
+         #plot_results_brute(single_result_brute,best_vals=True,varlabels=None)
+         for current_single_result in single_result_brute.candidates:
+
+             current_single_sigmoid_amplitude=current_single_result.params["single_sigmoid_amplitude"].value
+             current_single_sigmoid_center=current_single_result.params["single_sigmoid_center"].value
+             current_single_sigmoid_sigma=current_single_result.params["single_sigmoid_sigma"].value
+
+             single_sigmoid_mod=StepModel(form='logistic',prefix='single_sigmoid_')
+             single_sigmoid_mod_params=single_sigmoid_mod.make_params()
+             single_sigmoid_mod_params['single_sigmoid_amplitude'].set(value=current_single_sigmoid_amplitude)
+             single_sigmoid_mod_params['single_sigmoid_center'].set(value=current_single_sigmoid_center)
+             single_sigmoid_mod_params['single_sigmoid_sigma'].set(value=current_single_sigmoid_sigma)
+             
+             single_sigmoid_out=single_sigmoid_mod.fit(y_data,single_sigmoid_mod_params,x=x_data)
+             current_best_single_sigmoid_amplitude=single_sigmoid_out.best_values['single_sigmoid_amplitude']
+             current_best_single_sigmoid_center=single_sigmoid_out.best_values['single_sigmoid_center']
+             current_best_single_sigmoid_sigma=single_sigmoid_out.best_values['single_sigmoid_sigma']
+             true=y_data.iloc[without_zero_index:]
+             pred=pd.Series(sigmoid_function(x_data.iloc[without_zero_index:],current_best_single_sigmoid_amplitude,
+                                                                                    current_best_single_sigmoid_center,
+                                                                                    current_best_single_sigmoid_sigma))
+             pred_extended=pd.Series(sigmoid_function(new_x_data.loc[first_non_zero_extended_x_index:],current_best_single_sigmoid_amplitude,
+                                                                                    current_best_single_sigmoid_center,
+                                                                                    current_best_single_sigmoid_sigma))
+
+             if best_single_QNRMSE==None or best_single_QNRMSE>normalized_root_mean_squared_error(true,pred,pred_extended):
+                 
+                 best_single_amplitude=current_best_single_sigmoid_amplitude
+                 best_single_center=current_best_single_sigmoid_center
+                 best_single_sigma=current_best_single_sigmoid_sigma
+                 true=y_data.iloc[without_zero_index:]
+                 pred=pd.Series(sigmoid_function(x_data.iloc[without_zero_index:],current_best_single_sigmoid_amplitude,
+                                                                                        current_best_single_sigmoid_center,
+                                                                                        current_best_single_sigmoid_sigma))
+                 pred_extended=pd.Series(sigmoid_function(new_x_data.loc[first_non_zero_extended_x_index:],current_best_single_sigmoid_amplitude,
+                                                                                        current_best_single_sigmoid_center,
+                                                                                        current_best_single_sigmoid_sigma))
+
+                 best_single_QNRMSE=normalized_root_mean_squared_error(true,pred,pred_extended)
+
+        
+         single_sigmoid_y_data=pd.Series(sigmoid_function(new_x_data,best_single_amplitude,
+                                                                                best_single_center,
+                                                                                best_single_sigma))
+
+
+
+         if best_single_QNRMSE<0.5:
+             fit='TypeI'
+         ##Define condition to test double sigmoid fit
+         if best_single_QNRMSE<1e-3 or best_single_QNRMSE>0.5 or best_single_sigma<1:
+
+             params=Parameters()
+             params.add('sigmoid_amplitude',value=max(y_data),min=0)
+             params.add('sigmoid_center',value=x0)
+             params.add("sigmoid_sigma",value=500,min=0.1)
+             params.add('step_amplitude',value=1,vary=False)
+             params.add('step_center',value=first_non_zero_x,min=0)
+
+             
+             params['sigmoid_amplitude'].set(brute_step=80)
+             params["sigmoid_center"].set(brute_step=60)
+             params["sigmoid_sigma"].set(brute_step=120)
+             params['step_amplitude'].set(brute_step=0.1)
+             params['step_center'].set(brute_step=(max(x_data//9)))
+
+
+             fitter=Minimizer(sigmoid_to_minimize,params,fcn_args=(x_data,y_data))
+
+             result_brute=fitter.minimize(method='brute',Ns=15,keep=15)
+             
+            
+    
+    
+             for current_results in result_brute.candidates:
+                  current_sigmoid_amplitude=current_results.params['sigmoid_amplitude'].value
+                  current_sigmoid_center=current_results.params['sigmoid_center'].value
+                  current_sigmoid_sigma=current_results.params['sigmoid_sigma'].value
+                  current_step_amplitude=current_results.params['step_amplitude'].value
+                  current_step_center=current_results.params['step_center'].value
+                 
+                  new_sigmoid_model=StepModel(form='logistic',prefix='sigmoid_')
+                  new_sigmoid_params=new_sigmoid_model.make_params()
+                  new_sigmoid_params['sigmoid_amplitude'].set(value=current_sigmoid_amplitude)
+                  new_sigmoid_params['sigmoid_center'].set(value=current_sigmoid_center)
+                  new_sigmoid_params['sigmoid_sigma'].set(value=current_sigmoid_sigma)     
+                 
+                  step_mod=StepModel(form='logistic',prefix="step_")
+                  new_sigmoid_params.update(step_mod.make_params())
+                  new_sigmoid_params['step_amplitude'].set(value=current_step_amplitude)
+                  new_sigmoid_params['step_center'].set(value=current_step_center)
+                  new_sigmoid_params['step_sigma'].set(value=0.00001,vary=False) 
+                 
+                  compo_model=new_sigmoid_model*step_mod
+    
+                  compo_out=compo_model.fit(y_data,new_sigmoid_params,x=x_data)
+    
+                  # Get parameters best estimations
+                  new_sigmoid_amplitude=compo_out.best_values['sigmoid_amplitude']
+                  new_sigmoid_center=compo_out.best_values['sigmoid_center']
+                  new_sigmoid_sigma=compo_out.best_values['sigmoid_sigma']
+                  true=y_data.iloc[without_zero_index:]
+                  pred=pd.Series(compo(x_data.iloc[without_zero_index:],compo_out.best_values['step_center'],compo_out.best_values['step_amplitude'],compo_out.best_values["sigmoid_amplitude"],compo_out.best_values["sigmoid_center"],compo_out.best_values["sigmoid_sigma"]))
+                  pred_extended=pd.Series(compo(new_x_data.loc[first_non_zero_extended_x_index:],compo_out.best_values['step_center'],compo_out.best_values['step_amplitude'],compo_out.best_values["sigmoid_amplitude"],compo_out.best_values["sigmoid_center"],compo_out.best_values["sigmoid_sigma"]))
+                 
+
+                  if best_compo_QNRMSE==None or best_compo_QNRMSE>normalized_root_mean_squared_error(true,pred,pred_extended):
+                     
+                      true=y_data.iloc[without_zero_index:]
+                      pred=pd.Series(compo(x_data.iloc[without_zero_index:],compo_out.best_values['step_center'],compo_out.best_values['step_amplitude'],compo_out.best_values["sigmoid_amplitude"],compo_out.best_values["sigmoid_center"],compo_out.best_values["sigmoid_sigma"]))
+                      pred_extended=pd.Series(compo(new_x_data.loc[first_non_zero_extended_x_index:],compo_out.best_values['step_center'],compo_out.best_values['step_amplitude'],compo_out.best_values["sigmoid_amplitude"],compo_out.best_values["sigmoid_center"],compo_out.best_values["sigmoid_sigma"]))
+                      best_compo_QNRMSE=normalized_root_mean_squared_error(true,pred,pred_extended)
+                      
+                      best_sigmoid_amplitude=compo_out.best_values["sigmoid_amplitude"]
+                      best_sigmoid_center=compo_out.best_values["sigmoid_center"]
+                      best_sigmoid_sigma=compo_out.best_values["sigmoid_sigma"]
+                     
+                      best_step_amplitude=compo_out.best_values['step_amplitude']
+                      best_step_center=compo_out.best_values['step_center']
+                      best_step_sigma=compo_out.best_values['step_sigma']
+                      
+             
+             computed_y_data=pd.Series(compo(new_x_data,best_step_center,best_step_amplitude,best_sigmoid_amplitude,best_sigmoid_center,best_sigmoid_sigma))
+             model_table=pd.DataFrame(np.column_stack((new_x_data,computed_y_data)),columns=["Stim_amp_pA","Frequency_Hz"])
+             typeII_tested=True
+
+             if 2*best_compo_QNRMSE<=best_single_QNRMSE and best_compo_QNRMSE<0.1 and best_compo_QNRMSE>1e-4:
+                 fit= 'TypeII'
+             elif best_single_QNRMSE<0.5 and best_single_sigma>1:
+                 fit='TypeI'
+             else:
+                 fit='Failed'
+                 
+         color_dict={"COARSE":"green",
+                     "FINEST":'red'}
+
+         if best_compo_QNRMSE==None:
+             best_compo_QNRMSE=np.nan
+
+         
+
+         if do_plot == True:
+              single_sigmoid_table=pd.DataFrame(np.column_stack((new_x_data,single_sigmoid_y_data)),columns=["Stim_amp_pA","Frequency_Hz"])
+              my_plot=ggplot(f_I_table,aes(x=f_I_table["Stim_amp_pA"],y=f_I_table["Frequency_Hz"],color=f_I_table["stimulus_description"]))+geom_point()+scale_color_manual(values=color_dict)
+              if fit=='TypeII':
+                   compo_line='solid'
+                   single_line='dashed'
+                   my_plot+=geom_line(model_table,aes(x=model_table["Stim_amp_pA"],y=model_table['Frequency_Hz']),color='red',linetype=compo_line)
+              elif fit=='TypeI':
+                   compo_line='dashed'
+                   single_line='solid'
+
+                   if typeII_tested==True:
+                       print('jijij')
+                       my_plot+=geom_line(model_table,aes(x=model_table["Stim_amp_pA"],y=model_table['Frequency_Hz']),color='red',linetype=compo_line)
+
+              else:
+                  single_line="dashed"
+              
+              my_plot+=geom_line(single_sigmoid_table,aes(x=single_sigmoid_table["Stim_amp_pA"],y=single_sigmoid_table['Frequency_Hz']),color='blue',linetype=single_line)
+
+              my_plot+=xlab(str("Stim_amp_pA_id: "+str_cell_id))
+              print(my_plot)
+              
+         end_time=time.time()
+         
+         #print("Total time= ",end_time-start_time,"s ; Time compo brute=",time_1-start_time,"s ; Time single brute=",time_2-time_1)
+         return fit,best_single_QNRMSE,best_single_amplitude,best_single_center,best_single_sigma,best_compo_QNRMSE,best_step_amplitude,best_step_center,best_step_sigma,best_sigmoid_amplitude,best_sigmoid_center,best_sigmoid_sigma
+         
+    except(StopIteration):
+         print("Stop Iteration")
+         return(np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+         
+    except (ValueError):
+         print("stopped_valueError")
+         
+         return(np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+        
+    except (RuntimeError):
+         print("Can't fit sigmoid, least-square optimization failed")
+        
+         return(np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+    except (TypeError):
+         print("Stop Type Error")
+         return(np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+     
+        
+def compute_f_I_params(fit_table,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0,do_plot=False):
+    mycol=["Cell_id","Fit","Gain","Threshold","Saturation"]
+    f_I_params_table=pd.DataFrame(columns=mycol)
+    for current_cell_id in fit_table.loc[:,"cell_id"]:
+        current_fit_value=fit_table[fit_table['cell_id']==str(current_cell_id)].fit.values[0]
+        
+        current_f_I_table=extract_stim_freq(float(current_cell_id), species_sweep_stim_table,per_time=per_time,first_x_ms=first_x_ms,per_nth_spike=per_nth_spike,first_nth_spike=first_nth_spike)
+        coarse_f_I_table=current_f_I_table[current_f_I_table['stimulus_description']=='COARSE']
+        
+        x_data=coarse_f_I_table.loc[:,'Stim_amp_pA']
+        new_x_data=pd.Series(np.arange(min(x_data),max(x_data),0.1))
+        if current_fit_value == 'TypeI':
+            
+            single_amplitude_value=fit_table[fit_table['cell_id']==str(current_cell_id)].best_single_amplitude.values[0]
+            single_center_value=fit_table[fit_table['cell_id']==str(current_cell_id)].best_single_center.values[0]
+            single_sigma_value=fit_table[fit_table['cell_id']==str(current_cell_id)].best_single_sigma.values[0]
+            single_sigmoid_y_data=pd.Series(sigmoid_function(new_x_data,single_amplitude_value,single_center_value,single_sigma_value))
+                                                                                   
+            
+            twentyfive_index=next(x for x, val in enumerate(single_sigmoid_y_data) if val >(0.25*max(single_sigmoid_y_data)))
+            seventyfive_index=next(x for x, val in enumerate(single_sigmoid_y_data) if val >(0.75*max(single_sigmoid_y_data)))
+            #fit linear line to linear sigmoid portion
+            Gain,Intercept=fit_specimen_fi_slope(new_x_data.iloc[twentyfive_index:seventyfive_index],sigmoid_function(new_x_data.iloc[twentyfive_index:seventyfive_index],single_amplitude_value,single_center_value,single_sigma_value))
+            Threshold=(0-Intercept)/Gain
+            extended_f_I_table=pd.DataFrame(np.column_stack((new_x_data,single_sigmoid_y_data)),columns=["Stim_amp_pA","Frequency_Hz"])
+            my_derivative=np.array(derivative(sigmoid_function,new_x_data,dx=1e-1,args=(single_amplitude_value,single_center_value,single_sigma_value)))
+            end_slope=np.mean(my_derivative[-10:])
+            Saturation=np.nan
+            if end_slope <=0.001:
+                Saturation=np.mean(single_sigmoid_y_data[-10:])
+                
+            if do_plot==True:
+                
+                myplot=ggplot(coarse_f_I_table,aes(x=coarse_f_I_table["Stim_amp_pA"],y=coarse_f_I_table["Frequency_Hz"]))+geom_point()
+                myplot+=geom_line(extended_f_I_table,aes(x=extended_f_I_table["Stim_amp_pA"],y=extended_f_I_table["Frequency_Hz"]),color='blue')
+                myplot+=geom_abline(aes(intercept=Intercept,slope=Gain))
+                Threshold_table=pd.DataFrame({'Stim_amp_pA':[Threshold],'Frequency_Hz':[0]})
+                myplot+=geom_point(Threshold_table,aes(x=Threshold_table["Stim_amp_pA"],y=Threshold_table["Frequency_Hz"]),color='green')
+                if Saturation!=np.nan:
+                    myplot+=geom_abline(aes(intercept=Saturation,slope=0))
+                
+                
+                
+        elif current_fit_value == 'TypeII':
+            compo_step_amplitude=fit_table[fit_table['cell_id']==str(current_cell_id)].best_step_amplitude.values[0]
+            compo_step_center=fit_table[fit_table['cell_id']==str(current_cell_id)].best_step_center.values[0]
+            compo_sigmoid_amplitude=fit_table[fit_table['cell_id']==str(current_cell_id)].best_sigmoid_amplitude.values[0]
+            compo_sigmoid_center=fit_table[fit_table['cell_id']==str(current_cell_id)].best_sigmoid_center.values[0]
+            compo_sigmoid_sigma=fit_table[fit_table['cell_id']==str(current_cell_id)].best_sigmoid_sigma.values[0]
+            new_y_data=pd.Series(compo(new_x_data,compo_step_center,compo_step_amplitude,compo_sigmoid_amplitude,compo_sigmoid_center,compo_sigmoid_sigma))
+         
+            extended_f_I_table=pd.DataFrame(np.column_stack((new_x_data,new_y_data)),columns=["Stim_amp_pA","Frequency_Hz"])
+           
+            second_derivative=new_y_data.diff().diff()
+            linear_portion_start_index=next(x for x, val in enumerate(second_derivative) if val <0)
+            linear_portion_start_index+=1
+            linear_portion_y_data=new_y_data.iloc[linear_portion_start_index:]
+            linear_portion_x_data=new_x_data.iloc[linear_portion_start_index:]
+            print(pd.DataFrame(np.column_stack((linear_portion_x_data,linear_portion_y_data)),columns=["Stim_amp_pA","Frequency_Hz"]))
+            twentyfive_index=next(x for x, val in enumerate(linear_portion_y_data) if val >(1.25*(min(linear_portion_y_data))))
+            seventyfive_index=next(x for x, val in enumerate(linear_portion_y_data) if val >(1.75*(min(linear_portion_y_data))))
+            print(max(linear_portion_y_data)-min(linear_portion_y_data))
+            Gain,Intercept=fit_specimen_fi_slope(linear_portion_x_data.iloc[twentyfive_index:seventyfive_index],linear_portion_y_data.iloc[twentyfive_index:seventyfive_index])
+            first_derivative=new_y_data.diff()
+            Threshold=compo_step_center
+            Saturation=np.nan
+            if np.mean(first_derivative[-100:]) <=0.001:
+                Saturation=np.mean(first_derivative[-100:])
+            
+            
+        else:
+            Gain,Threshold,Saturation=np.nan,np.nan,np.nan
+            
+        if do_plot==True and current_fit_value=='TypeI' or do_plot==True and current_fit_value=='TypeII':
+            
+            myplot=ggplot(coarse_f_I_table,aes(x=coarse_f_I_table["Stim_amp_pA"],y=coarse_f_I_table["Frequency_Hz"]))+geom_point()
+            myplot+=geom_line(extended_f_I_table,aes(x=extended_f_I_table["Stim_amp_pA"],y=extended_f_I_table["Frequency_Hz"]),color='blue')
+            myplot+=geom_abline(aes(intercept=Intercept,slope=Gain))
+            Threshold_table=pd.DataFrame({'Stim_amp_pA':[Threshold],'Frequency_Hz':[0]})
+            myplot+=geom_point(Threshold_table,aes(x=Threshold_table["Stim_amp_pA"],y=Threshold_table["Frequency_Hz"]),color='green')
+            if Saturation!=np.nan:
+                myplot+=geom_abline(aes(intercept=Saturation,slope=0))
+            print(myplot)
+        new_line=pd.Series([str(current_cell_id),current_fit_value,Gain,Threshold,Saturation],
+                       index=mycol)
+        f_I_params_table=f_I_params_table.append(new_line,ignore_index=True)
+        
+        
+    return(f_I_params_table)
+        
 def composite_function(x,sigmoid_amplitude,sigmoid_center,sigmoid_sigma,step_amplitude,step_center,step_sigma):
     y=(sigmoid_amplitude*(1-(1/(1+np.exp((x-sigmoid_center)/sigmoid_sigma)))))*(step_amplitude*(1-(1/(1+np.exp((x-step_center)/step_sigma)))))
     return y
@@ -1797,11 +2206,11 @@ def composite_function(x,sigmoid_amplitude,sigmoid_center,sigmoid_sigma,step_amp
 def sigmoid_function(x,amplitude,center,sigma):
      y=amplitude*(1-(1/(1+np.exp((x-center)/sigma))))
      return y   
-def my_expression(x,x_step):
-    y=(1-(1/(1+np.exp((x-x_step)/0.0001))))
+def my_expression(x,step_center,step_amplitude):
+    y=step_amplitude*(1-(1/(1+np.exp((x-step_center)/0.00001))))
     return y
-def compo(x,x_step,amplitude,center,sigma):
-    y=sigmoid_function(x,amplitude,center,sigma)*my_expression(x,x_step)
+def compo(x,step_center,step_amplitude,amplitude,center,sigma):
+    y=sigmoid_function(x,amplitude,center,sigma)*my_expression(x,step_center,step_amplitude)
     return y
 def jump(x, mid):
     """Heaviside step function."""
@@ -1809,6 +2218,75 @@ def jump(x, mid):
     imid = max(np.where(x <= mid)[0])
     o[imid:] = 1.0
     return o
+
+def relative_squared_error(true, pred):
+    true_mean = np.mean(true)
+    squared_error_num = np.sum(np.square(true - pred))
+    squared_error_den = np.sum(np.square(true - true_mean))
+    rse_loss = squared_error_num / squared_error_den
+    return rse_loss
+
+def normalized_root_mean_squared_error(true, pred,pred_extended):
+    #Normalization by the interquartile range
+    squared_error = np.square((true - pred))
+    sum_squared_error = np.sum(squared_error)
+    rmse = np.sqrt(sum_squared_error / true.size)
+    Q1=np.percentile(pred_extended,25)
+    Q3=np.percentile(pred_extended,75)
+    #print('Q1=',Q1,", Q3=",Q3)
+    nrmse_loss = rmse/(Q3-Q1)
+    return nrmse_loss
+
+def relative_root_mean_squared_error(true, pred):
+    num = np.sum(np.square(true - pred))
+    den = np.sum(np.square(pred))
+    squared_error = num/den
+    rrmse_loss = np.sqrt(squared_error)
+    return rrmse_loss
+
+def coarse_or_fine_sweep(cell_id):
+    all_sweeps_table=pd.DataFrame(ctc.get_ephys_sweeps(cell_id))
+    all_sweeps_table=all_sweeps_table[all_sweeps_table['stimulus_name']=="Long Square"]
+    all_sweeps_table=all_sweeps_table[['sweep_number','stimulus_description']]
+    for elt in range(all_sweeps_table.shape[0]):
+        if 'COARSE' in all_sweeps_table.iloc[elt,1]:
+            all_sweeps_table.iloc[elt,1]='COARSE'
+        elif 'FINEST' in all_sweeps_table.iloc[elt,1]:
+            all_sweeps_table.iloc[elt,1]='FINEST'    
+    return(all_sweeps_table)
+    
+
+#%%
+start_time=time.time()
+total_time=0
+number_done=0
+mylist=mouse_id_list
+mycol=['cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
+fit_table=pd.DataFrame(columns=mycol)
+for cell_id in mylist:
+    start_time=time.time()
+    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=1000,do_plot=True)],
+                   index=mycol)
+    fit_table=fit_table.append(new_line,ignore_index=True)
+    end_time=time.time()
+    number_done+=1
+    number_remaining=len(mylist)-number_done
+    total_time+=end_time-start_time
+    remaining_time=number_remaining*total_time/number_done
+    total_remaining_minutes=remaining_time//60
+    remaining_hours=total_remaining_minutes//60
+    remaining_minutes=total_remaining_minutes%60
+    remaining_seconds=remaining_time%60
+    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
+
+print("Total time= ",total_time)
+
+#%%
+#plt.hist(new_fit_table['bestNRMSE'],bins=600)
+plt.scatter(new_fit_table['bestNRMSE'],new_fit_table['best_sigmoid_sigma'],alpha=0.05)
+plt.ylim([-50,1500])
+#plt.xlim([-10,1000])
+plt.show()
 #%% in case of a decreasing phase - to be fixed
  
          # max_y_index=next(x for x, val in enumerate(y_data) if val == max(y_data))
