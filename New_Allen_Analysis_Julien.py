@@ -92,290 +92,498 @@ print("Total time= ",total_time)
     
 #%%5ms
 
-mycol=['Cell_id','Gain','Threshold','Saturation','Neuron_type','NRMSE_sigmoid','NRMSE_composite','Parameter_amplitude','Parameter_center','Parameter_sigma','Starting_frequency_A','Adapt_cst_B','Steady_state_frequency_C','Normalized_starting_freq_Anorm','Normalized_ss_freq_Cnorm','Input_resistance_MOhm']
+mycol=['Cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
 units=['--',
-        'Hz/pA',
-        'pA',
-        'Hz',
-        '--',
-        'WU',
-        'WU',
-        'Hz',
-        'pA',
-        'Hz/pA',
-        'WU',
-        'spike_index',
-        'WU',
-        'WU',
-        'WU',
-        'MOhm']
+       '--',
+       '--',
+       'Hz',
+       'pA',
+       'Hz/pA',
+       '--',
+       'Hz',
+       'pA',
+       'Hz/pA',
+       'Hz',
+       'pA',
+       'Hz/pA']
+        
 
 
 first_line=pd.Series(mycol,index=mycol)
 second_line=pd.Series(units,index=mycol)
 first_two_lines=pd.DataFrame([first_line,second_line])
-
-main_start_time=time.time()
 start_time=time.time()
+total_time=0
+number_done=0
+mylist=mouse_id_list
 
-features_5ms=compute_feature(mouse_id_list,mouse_sweep_stim_table,per_time=True,first_x_ms=5)
-features_5ms=features_5ms.reindex(columns=mycol)
-File_5ms=pd.concat([first_two_lines,features_5ms])
-end_5ms=time.time()
-print("time for 5ms=",end_5ms-start_time,"s")
-File_5ms=File_5ms.iloc[1:,:]
-File_5ms.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_03_24/Features_5ms.csv"),na_rep="nan",index=False)
+new_fit_table=pd.DataFrame(columns=mycol)
+for cell_id in mylist:
+    start_time=time.time()
+    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=5,do_plot=False)],
+                   index=mycol)
+    new_fit_table=new_fit_table.append(new_line,ignore_index=True)
+    end_time=time.time()
+    number_done+=1
+    number_remaining=len(mylist)-number_done
+    total_time+=end_time-start_time
+    remaining_time=number_remaining*total_time/number_done
+    total_remaining_minutes=remaining_time//60
+    remaining_hours=total_remaining_minutes//60
+    remaining_minutes=total_remaining_minutes%60
+    remaining_seconds=remaining_time%60
+    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
+
+print("Total time new_fit_sigmoid= ",total_time)
+
+
+fit_table=pd.concat([first_two_lines,new_fit_table])
+fit_table=fit_table.iloc[1:,:]
+fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/fit_table_5ms.csv',na_rep='nan',index=False)
+    
+units=['--','--','Hz/pA','pA','Hz']
+units=pd.Series(units,index=["Cell_id","Fit","Gain","Threshold","Saturation"])
+main_start_time=time.time()
+
+f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=5,per_nth_spike=False,first_nth_spike=0,do_plot=False)
+f_I_table=pd.concat([units,f_I_table])
+f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/f_I_table_5ms.csv',na_rep='nan',index=False)
+end_time=time.time()
+
+print("time for f_I_table=",end_time-start_time,"s")
 
 
 #%% 10ms
-mycol=['Cell_id','Gain','Threshold','Saturation','Neuron_type','NRMSE_sigmoid','NRMSE_composite','Parameter_amplitude','Parameter_center','Parameter_sigma','Starting_frequency_A','Adapt_cst_B','Steady_state_frequency_C','Normalized_starting_freq_Anorm','Normalized_ss_freq_Cnorm','Input_resistance_MOhm']
+
+mycol=['Cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
 units=['--',
-        'Hz/pA',
-        'pA',
-        'Hz',
-        '--',
-        'WU',
-        'WU',
-        'Hz',
-        'pA',
-        'Hz/pA',
-        'WU',
-        'spike_index',
-        'WU',
-        'WU',
-        'WU',
-        'MOhm']
+       '--',
+       '--',
+       'Hz',
+       'pA',
+       'Hz/pA',
+       '--',
+       'Hz',
+       'pA',
+       'Hz/pA',
+       'Hz',
+       'pA',
+       'Hz/pA']
+        
 
 
+first_line=pd.Series(mycol,index=mycol)
+second_line=pd.Series(units,index=mycol)
+first_two_lines=pd.DataFrame([first_line,second_line])
 start_time=time.time()
-features_10ms=compute_feature(mouse_id_list,mouse_sweep_stim_table,per_time=True,first_x_ms=10)
-features_10ms=features_10ms.reindex(columns=mycol)
-first_line=pd.Series(mycol,index=mycol)
-second_line=pd.Series(units,index=mycol)
-first_two_lines=pd.DataFrame([first_line,second_line])
-File_10ms=pd.concat([first_two_lines,features_10ms])
+total_time=0
+number_done=0
+mylist=mouse_id_list
 
-end_10ms=time.time()
+new_fit_table=pd.DataFrame(columns=mycol)
+for cell_id in mylist:
+    start_time=time.time()
+    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=10,do_plot=False)],
+                   index=mycol)
+    new_fit_table=new_fit_table.append(new_line,ignore_index=True)
+    end_time=time.time()
+    number_done+=1
+    number_remaining=len(mylist)-number_done
+    total_time+=end_time-start_time
+    remaining_time=number_remaining*total_time/number_done
+    total_remaining_minutes=remaining_time//60
+    remaining_hours=total_remaining_minutes//60
+    remaining_minutes=total_remaining_minutes%60
+    remaining_seconds=remaining_time%60
+    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
 
-print("time for 10ms=",end_10ms-start_time,"s")
-File_10ms=File_10ms.iloc[1:,:]
-File_10ms.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_03_24/Features_10ms.csv"),na_rep="nan",index=False)
-
-#%% 25ms
-mycol=['Cell_id','Gain','Threshold','Saturation','Neuron_type','NRMSE_sigmoid','NRMSE_composite','Parameter_amplitude','Parameter_center','Parameter_sigma','Starting_frequency_A','Adapt_cst_B','Steady_state_frequency_C','Normalized_starting_freq_Anorm','Normalized_ss_freq_Cnorm','Input_resistance_MOhm']
-units=['--',
-        'Hz/pA',
-        'pA',
-        'Hz',
-        '--',
-        'WU',
-        'WU',
-        'Hz',
-        'pA',
-        'Hz/pA',
-        'WU',
-        'spike_index',
-        'WU',
-        'WU',
-        'WU',
-        'MOhm']
+print("Total time new_fit_sigmoid= ",total_time)
 
 
-first_line=pd.Series(mycol,index=mycol)
-second_line=pd.Series(units,index=mycol)
-first_two_lines=pd.DataFrame([first_line,second_line])
-
-start_time=time.time()
-features_25ms=compute_feature(mouse_id_list,mouse_sweep_stim_table,per_time=True,first_x_ms=25)
-features_25ms=features_25ms.reindex(columns=mycol)
-File_25ms=pd.concat([first_two_lines,features_25ms])
-
-end_25ms=time.time()
-print("time for 25ms=",end_25ms-start_time,"s")
-File_25ms=File_25ms.iloc[1:,:]
-File_25ms.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_03_24/Features_25ms.csv"),na_rep="nan",index=False)
-#%% 50ms
-
-mycol=['Cell_id','Gain','Threshold','Saturation','Neuron_type','NRMSE_sigmoid','NRMSE_composite','Parameter_amplitude','Parameter_center','Parameter_sigma','Starting_frequency_A','Adapt_cst_B','Steady_state_frequency_C','Normalized_starting_freq_Anorm','Normalized_ss_freq_Cnorm','Input_resistance_MOhm']
-units=['--',
-        'Hz/pA',
-        'pA',
-        'Hz',
-        '--',
-        'WU',
-        'WU',
-        'Hz',
-        'pA',
-        'Hz/pA',
-        'WU',
-        'spike_index',
-        'WU',
-        'WU',
-        'WU',
-        'MOhm']
-
-
-first_line=pd.Series(mycol,index=mycol)
-second_line=pd.Series(units,index=mycol)
-first_two_lines=pd.DataFrame([first_line,second_line])
-
+fit_table=pd.concat([first_two_lines,new_fit_table])
+fit_table=fit_table.iloc[1:,:]
+fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/fit_table_10ms.csv',na_rep='nan',index=False)
+    
+units=['--','--','Hz/pA','pA','Hz']
+units=pd.Series(units,index=["Cell_id","Fit","Gain","Threshold","Saturation"])
 main_start_time=time.time()
 
+f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=10,per_nth_spike=False,first_nth_spike=0,do_plot=False)
+f_I_table=pd.concat([units,f_I_table])
+f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/f_I_table_10ms.csv',na_rep='nan',index=False)
+end_time=time.time()
 
+print("time for f_I_table=",end_time-start_time,"s")
+#%% 25ms
+
+mycol=['Cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
+units=['--',
+       '--',
+       '--',
+       'Hz',
+       'pA',
+       'Hz/pA',
+       '--',
+       'Hz',
+       'pA',
+       'Hz/pA',
+       'Hz',
+       'pA',
+       'Hz/pA']
+        
+
+
+first_line=pd.Series(mycol,index=mycol)
+second_line=pd.Series(units,index=mycol)
+first_two_lines=pd.DataFrame([first_line,second_line])
 start_time=time.time()
-features_50ms=compute_feature(mouse_id_list,mouse_sweep_stim_table,per_time=True,first_x_ms=50)
-features_50ms=features_50ms.reindex(columns=mycol)
-File_50ms=pd.concat([first_two_lines,features_50ms])
+total_time=0
+number_done=0
+mylist=mouse_id_list
 
-end_50ms=time.time()
-print("time for 50ms=",end_50ms-start_time,"s")
-File_50ms=File_50ms.iloc[1:,:]
-File_50ms.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_03_24/Features_50ms.csv"),na_rep="nan",index=False)
+new_fit_table=pd.DataFrame(columns=mycol)
+for cell_id in mylist:
+    start_time=time.time()
+    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=25,do_plot=False)],
+                   index=mycol)
+    new_fit_table=new_fit_table.append(new_line,ignore_index=True)
+    end_time=time.time()
+    number_done+=1
+    number_remaining=len(mylist)-number_done
+    total_time+=end_time-start_time
+    remaining_time=number_remaining*total_time/number_done
+    total_remaining_minutes=remaining_time//60
+    remaining_hours=total_remaining_minutes//60
+    remaining_minutes=total_remaining_minutes%60
+    remaining_seconds=remaining_time%60
+    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
+
+print("Total time new_fit_sigmoid= ",total_time)
+
+
+fit_table=pd.concat([first_two_lines,new_fit_table])
+fit_table=fit_table.iloc[1:,:]
+fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/fit_table_25ms.csv',na_rep='nan',index=False)
+    
+units=['--','--','Hz/pA','pA','Hz']
+units=pd.Series(units,index=["Cell_id","Fit","Gain","Threshold","Saturation"])
+main_start_time=time.time()
+
+f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=25,per_nth_spike=False,first_nth_spike=0,do_plot=False)
+f_I_table=pd.concat([units,f_I_table])
+f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/f_I_table_25ms.csv',na_rep='nan',index=False)
+end_time=time.time()
+
+print("time for f_I_table=",end_time-start_time,"s")
+#%% 50ms
+
+
+mycol=['Cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
+units=['--',
+       '--',
+       '--',
+       'Hz',
+       'pA',
+       'Hz/pA',
+       '--',
+       'Hz',
+       'pA',
+       'Hz/pA',
+       'Hz',
+       'pA',
+       'Hz/pA']
+        
+
+
+first_line=pd.Series(mycol,index=mycol)
+second_line=pd.Series(units,index=mycol)
+first_two_lines=pd.DataFrame([first_line,second_line])
+start_time=time.time()
+total_time=0
+number_done=0
+mylist=mouse_id_list
+
+new_fit_table=pd.DataFrame(columns=mycol)
+for cell_id in mylist:
+    start_time=time.time()
+    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=50,do_plot=False)],
+                   index=mycol)
+    new_fit_table=new_fit_table.append(new_line,ignore_index=True)
+    end_time=time.time()
+    number_done+=1
+    number_remaining=len(mylist)-number_done
+    total_time+=end_time-start_time
+    remaining_time=number_remaining*total_time/number_done
+    total_remaining_minutes=remaining_time//60
+    remaining_hours=total_remaining_minutes//60
+    remaining_minutes=total_remaining_minutes%60
+    remaining_seconds=remaining_time%60
+    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
+
+print("Total time new_fit_sigmoid= ",total_time)
+
+
+fit_table=pd.concat([first_two_lines,new_fit_table])
+fit_table=fit_table.iloc[1:,:]
+fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/fit_table_50ms.csv',na_rep='nan',index=False)
+    
+units=['--','--','Hz/pA','pA','Hz']
+units=pd.Series(units,index=["Cell_id","Fit","Gain","Threshold","Saturation"])
+main_start_time=time.time()
+
+f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=50,per_nth_spike=False,first_nth_spike=0,do_plot=False)
+f_I_table=pd.concat([units,f_I_table])
+f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/f_I_table_50ms.csv',na_rep='nan',index=False)
+end_time=time.time()
+
+print("time for f_I_table=",end_time-start_time,"s")
 #%% 100ms
 
-mycol=['Cell_id','Gain','Threshold','Saturation','Neuron_type','NRMSE_sigmoid','NRMSE_composite','Parameter_amplitude','Parameter_center','Parameter_sigma','Starting_frequency_A','Adapt_cst_B','Steady_state_frequency_C','Normalized_starting_freq_Anorm','Normalized_ss_freq_Cnorm','Input_resistance_MOhm']
+
+mycol=['Cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
 units=['--',
-        'Hz/pA',
-        'pA',
-        'Hz',
-        '--',
-        'WU',
-        'WU',
-        'Hz',
-        'pA',
-        'Hz/pA',
-        'WU',
-        'spike_index',
-        'WU',
-        'WU',
-        'WU',
-        'MOhm']
+       '--',
+       '--',
+       'Hz',
+       'pA',
+       'Hz/pA',
+       '--',
+       'Hz',
+       'pA',
+       'Hz/pA',
+       'Hz',
+       'pA',
+       'Hz/pA']
+        
 
 
 first_line=pd.Series(mycol,index=mycol)
 second_line=pd.Series(units,index=mycol)
 first_two_lines=pd.DataFrame([first_line,second_line])
-
-
-
 start_time=time.time()
-features_100ms=compute_feature(mouse_id_list,mouse_sweep_stim_table,per_time=True,first_x_ms=100)
-features_100ms=features_100ms.reindex(columns=mycol)
-File_100ms=pd.concat([first_two_lines,features_100ms])
+total_time=0
+number_done=0
+mylist=mouse_id_list
 
-end_100ms=time.time()
-print("time for 100ms=",end_100ms-start_time,"s")
-File_100ms=File_100ms.iloc[1:,:]
-File_100ms.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_03_24/Features_100ms.csv"),na_rep="nan",index=False)
+new_fit_table=pd.DataFrame(columns=mycol)
+for cell_id in mylist:
+    start_time=time.time()
+    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=100,do_plot=False)],
+                   index=mycol)
+    new_fit_table=new_fit_table.append(new_line,ignore_index=True)
+    end_time=time.time()
+    number_done+=1
+    number_remaining=len(mylist)-number_done
+    total_time+=end_time-start_time
+    remaining_time=number_remaining*total_time/number_done
+    total_remaining_minutes=remaining_time//60
+    remaining_hours=total_remaining_minutes//60
+    remaining_minutes=total_remaining_minutes%60
+    remaining_seconds=remaining_time%60
+    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
 
+print("Total time new_fit_sigmoid= ",total_time)
+
+
+fit_table=pd.concat([first_two_lines,new_fit_table])
+fit_table=fit_table.iloc[1:,:]
+fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/fit_table_100ms.csv',na_rep='nan',index=False)
+    
+units=['--','--','Hz/pA','pA','Hz']
+units=pd.Series(units,index=["Cell_id","Fit","Gain","Threshold","Saturation"])
+main_start_time=time.time()
+
+f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=100,per_nth_spike=False,first_nth_spike=0,do_plot=False)
+f_I_table=pd.concat([units,f_I_table])
+f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/f_I_table_100ms.csv',na_rep='nan',index=False)
+end_time=time.time()
+
+print("time for f_I_table=",end_time-start_time,"s")
 #%% 250ms
-mycol=['Cell_id','Gain','Threshold','Saturation','Neuron_type','NRMSE_sigmoid','NRMSE_composite','Parameter_amplitude','Parameter_center','Parameter_sigma','Starting_frequency_A','Adapt_cst_B','Steady_state_frequency_C','Normalized_starting_freq_Anorm','Normalized_ss_freq_Cnorm','Input_resistance_MOhm']
+
+mycol=['Cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
 units=['--',
-        'Hz/pA',
-        'pA',
-        'Hz',
-        '--',
-        'WU',
-        'WU',
-        'Hz',
-        'pA',
-        'Hz/pA',
-        'WU',
-        'spike_index',
-        'WU',
-        'WU',
-        'WU',
-        'MOhm']
+       '--',
+       '--',
+       'Hz',
+       'pA',
+       'Hz/pA',
+       '--',
+       'Hz',
+       'pA',
+       'Hz/pA',
+       'Hz',
+       'pA',
+       'Hz/pA']
+        
 
 
 first_line=pd.Series(mycol,index=mycol)
 second_line=pd.Series(units,index=mycol)
 first_two_lines=pd.DataFrame([first_line,second_line])
-
-
 start_time=time.time()
-features_250ms=compute_feature(mouse_id_list,mouse_sweep_stim_table,per_time=True,first_x_ms=250)
-features_250ms=features_250ms.reindex(columns=mycol)
-File_250ms=pd.concat([first_two_lines,features_250ms])
+total_time=0
+number_done=0
+mylist=mouse_id_list
 
-end_250ms=time.time()
-print("time for 250ms=",end_250ms-start_time,"s")
-File_250ms=File_250ms.iloc[1:,:]
-File_250ms.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_03_24/Features_250ms.csv"),na_rep="nan",index=False)
+new_fit_table=pd.DataFrame(columns=mycol)
+for cell_id in mylist:
+    start_time=time.time()
+    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=250,do_plot=False)],
+                   index=mycol)
+    new_fit_table=new_fit_table.append(new_line,ignore_index=True)
+    end_time=time.time()
+    number_done+=1
+    number_remaining=len(mylist)-number_done
+    total_time+=end_time-start_time
+    remaining_time=number_remaining*total_time/number_done
+    total_remaining_minutes=remaining_time//60
+    remaining_hours=total_remaining_minutes//60
+    remaining_minutes=total_remaining_minutes%60
+    remaining_seconds=remaining_time%60
+    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
+
+print("Total time new_fit_sigmoid= ",total_time)
+
+
+fit_table=pd.concat([first_two_lines,new_fit_table])
+fit_table=fit_table.iloc[1:,:]
+fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/fit_table_250ms.csv',na_rep='nan',index=False)
+    
+units=['--','--','Hz/pA','pA','Hz']
+units=pd.Series(units,index=["Cell_id","Fit","Gain","Threshold","Saturation"])
+main_start_time=time.time()
+
+f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=250,per_nth_spike=False,first_nth_spike=0,do_plot=False)
+f_I_table=pd.concat([units,f_I_table])
+f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/f_I_table_250ms.csv',na_rep='nan',index=False)
+end_time=time.time()
+
+print("time for f_I_table=",end_time-start_time,"s")
 #%% 500ms
 
-mycol=['Cell_id','Gain','Threshold','Saturation','Neuron_type','NRMSE_sigmoid','NRMSE_composite','Parameter_amplitude','Parameter_center','Parameter_sigma','Starting_frequency_A','Adapt_cst_B','Steady_state_frequency_C','Normalized_starting_freq_Anorm','Normalized_ss_freq_Cnorm','Input_resistance_MOhm']
+
+mycol=['Cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
 units=['--',
-        'Hz/pA',
-        'pA',
-        'Hz',
-        '--',
-        'WU',
-        'WU',
-        'Hz',
-        'pA',
-        'Hz/pA',
-        'WU',
-        'spike_index',
-        'WU',
-        'WU',
-        'WU',
-        'MOhm']
+       '--',
+       '--',
+       'Hz',
+       'pA',
+       'Hz/pA',
+       '--',
+       'Hz',
+       'pA',
+       'Hz/pA',
+       'Hz',
+       'pA',
+       'Hz/pA']
+        
 
 
 first_line=pd.Series(mycol,index=mycol)
 second_line=pd.Series(units,index=mycol)
 first_two_lines=pd.DataFrame([first_line,second_line])
-
-
-
-
 start_time=time.time()
-features_500ms=compute_feature(mouse_id_list,mouse_sweep_stim_table,per_time=True,first_x_ms=500)
-features_500ms=features_500ms.reindex(columns=mycol)
-File_500ms=pd.concat([first_two_lines,features_500ms])
+total_time=0
+number_done=0
+mylist=mouse_id_list
 
-end_500ms=time.time()
-print("time for 500ms=",end_500ms-start_time,"s")
-File_500ms=File_500ms.iloc[1:,:]
-File_500ms.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_03_24/Features_500ms.csv"),na_rep="nan",index=False)
+new_fit_table=pd.DataFrame(columns=mycol)
+for cell_id in mylist:
+    start_time=time.time()
+    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=500,do_plot=False)],
+                   index=mycol)
+    new_fit_table=new_fit_table.append(new_line,ignore_index=True)
+    end_time=time.time()
+    number_done+=1
+    number_remaining=len(mylist)-number_done
+    total_time+=end_time-start_time
+    remaining_time=number_remaining*total_time/number_done
+    total_remaining_minutes=remaining_time//60
+    remaining_hours=total_remaining_minutes//60
+    remaining_minutes=total_remaining_minutes%60
+    remaining_seconds=remaining_time%60
+    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
+
+print("Total time new_fit_sigmoid= ",total_time)
+
+
+fit_table=pd.concat([first_two_lines,new_fit_table])
+fit_table=fit_table.iloc[1:,:]
+fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/fit_table_500ms.csv',na_rep='nan',index=False)
+    
+units=['--','--','Hz/pA','pA','Hz']
+units=pd.Series(units,index=["Cell_id","Fit","Gain","Threshold","Saturation"])
+main_start_time=time.time()
+
+f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=500,per_nth_spike=False,first_nth_spike=0,do_plot=False)
+f_I_table=pd.concat([units,f_I_table])
+f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/f_I_table_500ms.csv',na_rep='nan',index=False)
+end_time=time.time()
+
+print("time for f_I_table=",end_time-start_time,"s")
 #%% 1000ms
 
-mycol=['Cell_id','Gain','Threshold','Saturation','Neuron_type','NRMSE_sigmoid','NRMSE_composite','Parameter_amplitude','Parameter_center','Parameter_sigma','Starting_frequency_A','Adapt_cst_B','Steady_state_frequency_C','Normalized_starting_freq_Anorm','Normalized_ss_freq_Cnorm','Input_resistance_MOhm']
+
+mycol=['Cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
 units=['--',
-        'Hz/pA',
-        'pA',
-        'Hz',
-        '--',
-        'WU',
-        'WU',
-        'Hz',
-        'pA',
-        'Hz/pA',
-        'WU',
-        'spike_index',
-        'WU',
-        'WU',
-        'WU',
-        'MOhm']
+       '--',
+       '--',
+       'Hz',
+       'pA',
+       'Hz/pA',
+       '--',
+       'Hz',
+       'pA',
+       'Hz/pA',
+       'Hz',
+       'pA',
+       'Hz/pA']
+        
 
 
 first_line=pd.Series(mycol,index=mycol)
 second_line=pd.Series(units,index=mycol)
 first_two_lines=pd.DataFrame([first_line,second_line])
-
-
-
-
 start_time=time.time()
-features_1000ms=compute_feature(mouse_id_list,mouse_sweep_stim_table,per_time=True,first_x_ms=1000)
-features_1000ms=features_1000ms.reindex(columns=mycol)
-end_1000ms=time.time()
-print("time for 1000ms=",end_1000ms-start_time,"s")
-File_1000ms=pd.concat([first_two_lines,features_1000ms])
-File_1000ms=File_1000ms.iloc[1:,:]
-File_1000ms.to_csv(path_or_buf=str("/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_03_24/Features_1000ms.csv"),na_rep="nan",index=False)
+total_time=0
+number_done=0
+mylist=mouse_id_list
 
+new_fit_table=pd.DataFrame(columns=mycol)
+for cell_id in mylist:
+    start_time=time.time()
+    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=1000,do_plot=False)],
+                   index=mycol)
+    new_fit_table=new_fit_table.append(new_line,ignore_index=True)
+    end_time=time.time()
+    number_done+=1
+    number_remaining=len(mylist)-number_done
+    total_time+=end_time-start_time
+    remaining_time=number_remaining*total_time/number_done
+    total_remaining_minutes=remaining_time//60
+    remaining_hours=total_remaining_minutes//60
+    remaining_minutes=total_remaining_minutes%60
+    remaining_seconds=remaining_time%60
+    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
+
+print("Total time new_fit_sigmoid= ",total_time)
+
+
+fit_table=pd.concat([first_two_lines,new_fit_table])
+fit_table=fit_table.iloc[1:,:]
+fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/fit_table_1000ms.csv',na_rep='nan',index=False)
+    
+units=['--','--','Hz/pA','pA','Hz']
+units=pd.Series(units,index=["Cell_id","Fit","Gain","Threshold","Saturation"])
+main_start_time=time.time()
+
+f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=1000,per_nth_spike=False,first_nth_spike=0,do_plot=False)
+f_I_table=pd.concat([units,f_I_table])
+f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/f_I_table_1000ms.csv',na_rep='nan',index=False)
+end_time=time.time()
+
+print("time for f_I_table=",end_time-start_time,"s")
 #%% 4spikes
 
 mycol=['Cell_id','Gain','Threshold','Saturation','Neuron_type','NRMSE_sigmoid','NRMSE_composite','Parameter_amplitude','Parameter_center','Parameter_sigma','Starting_frequency_A','Adapt_cst_B','Steady_state_frequency_C','Normalized_starting_freq_Anorm','Normalized_ss_freq_Cnorm','Input_resistance_MOhm']
@@ -1860,8 +2068,9 @@ def single_sigmoid_to_minimize(params,x_data,data):
     single_sigmoid_amplitude=params['single_sigmoid_amplitude']
     single_sigmoid_center=params['single_sigmoid_center']
     single_sigmoid_sigma=params['single_sigmoid_sigma']
-    
+
     model=single_sigmoid_amplitude*(1-(1/(1+np.exp((x_data-single_sigmoid_center)/single_sigmoid_sigma))))
+
     return model-data
 
 def new_fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0,do_plot=False):
@@ -1920,7 +2129,7 @@ def new_fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first_x_ms=
          single_result_brute=single_sigmoid_fitter.minimize(method='brute',Ns=10,keep=10)
 
          best_single_QNRMSE=None
-         fit='Failed'
+         fit='Rejected'
          typeII_tested=False
          #plot_results_brute(single_result_brute,best_vals=True,varlabels=None)
          for current_single_result in single_result_brute.candidates:
@@ -2053,7 +2262,7 @@ def new_fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first_x_ms=
              elif best_single_QNRMSE<0.5 and best_single_sigma>1:
                  fit='TypeI'
              else:
-                 fit='Failed'
+                 fit='Rejected'
                  
          color_dict={"COARSE":"green",
                      "FINEST":'red'}
@@ -2093,27 +2302,270 @@ def new_fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first_x_ms=
          
     except(StopIteration):
          print("Stop Iteration")
-         return(np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+         return("Failed",np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
          
     except (ValueError):
          print("stopped_valueError")
          
-         return(np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+         return("Failed",np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
         
     except (RuntimeError):
          print("Can't fit sigmoid, least-square optimization failed")
         
-         return(np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+         return('Failed',np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
     except (TypeError):
          print("Stop Type Error")
-         return(np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+         return('Failed',np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
      
         
-def compute_f_I_params(fit_table,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0,do_plot=False):
+ 
+def heaviside_fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0,do_plot=False):
+    try:
+
+         
+         if type(cell_id)!=np.float64:
+             str_cell_id=str(cell_id)
+             cell_id=np.float64(cell_id)
+         else:
+             str_cell_id=str(cell_id)
+         # extract f_I table for the specimen and use only the "coarse" annotated sweeps
+         f_I_table=extract_stim_freq(float(cell_id), species_sweep_stim_table,per_time=per_time,first_x_ms=first_x_ms,per_nth_spike=per_nth_spike,first_nth_spike=first_nth_spike)
+         coarse_f_I_table=f_I_table[f_I_table['stimulus_description']=='COARSE']
+         if max(coarse_f_I_table.loc[:,'Frequency_Hz'])==0:
+             fit='No_COARSE_Response'
+             return (fit,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+         x_data=coarse_f_I_table.loc[:,'Stim_amp_pA']
+         y_data=coarse_f_I_table.loc[:,"Frequency_Hz"]
+         
+         #get initial estimate of parameters for single sigmoid fit
+         without_zero_index=next(x for x, val in enumerate(y_data) if val >0 )
+
+         
+         median_firing_rate_index=next(x for x, val in enumerate(y_data) if val >= np.median(y_data.iloc[without_zero_index:]))
+         #Get the stimulus amplitude correspondingto the median non-zero firing rate
+         x0=x_data.iloc[median_firing_rate_index]
+         #Get the slope from the linear fit of the firing rate
+         slope,intercept=fit_specimen_fi_slope(x_data,y_data)
+         
+         first_non_zero_x=x_data.iloc[without_zero_index]
+         new_x_data=pd.Series(np.arange(min(x_data),max(x_data),1))
+         first_non_zero_extended_x_index=next(x for x, val in enumerate(new_x_data) if val >=first_non_zero_x )
+         best_single_amplitude=np.nan
+         best_single_center=np.nan
+         best_single_sigma=np.nan
+         best_compo_QNRMSE=None
+         best_step_amplitude=np.nan
+         best_step_center=np.nan
+         best_step_sigma=np.nan
+         best_sigmoid_amplitude=np.nan
+         best_sigmoid_center=np.nan
+         best_sigmoid_sigma=np.nan
+
+         ##First, try to fit a single sigmoid
+         params_single_sigmoid=Parameters()
+         params_single_sigmoid.add('single_sigmoid_amplitude',value=max(y_data),min=0)
+         params_single_sigmoid.add('single_sigmoid_center',value=x0)
+         params_single_sigmoid.add('single_sigmoid_sigma',value=500,min=0.1)
+         params_single_sigmoid['single_sigmoid_amplitude'].set(brute_step=20)
+         params_single_sigmoid['single_sigmoid_center'].set(brute_step=21)
+         params_single_sigmoid['single_sigmoid_sigma'].set(brute_step=31)
+
+         single_sigmoid_fitter=Minimizer(single_sigmoid_to_minimize,params_single_sigmoid,fcn_args=(x_data,y_data))
+
+         single_result_brute=single_sigmoid_fitter.minimize(method='brute',Ns=10,keep=10)
+
+         best_single_QNRMSE=None
+         fit='Rejected'
+         typeII_tested=False
+
+         #plot_results_brute(single_result_brute,best_vals=True,varlabels=None)
+         for current_single_result in single_result_brute.candidates:
+
+             current_single_sigmoid_amplitude=current_single_result.params["single_sigmoid_amplitude"].value
+             current_single_sigmoid_center=current_single_result.params["single_sigmoid_center"].value
+             current_single_sigmoid_sigma=current_single_result.params["single_sigmoid_sigma"].value
+
+             single_sigmoid_mod=StepModel(form='logistic',prefix='single_sigmoid_')
+             single_sigmoid_mod_params=single_sigmoid_mod.make_params()
+             single_sigmoid_mod_params['single_sigmoid_amplitude'].set(value=current_single_sigmoid_amplitude)
+             single_sigmoid_mod_params['single_sigmoid_center'].set(value=current_single_sigmoid_center)
+             single_sigmoid_mod_params['single_sigmoid_sigma'].set(value=current_single_sigmoid_sigma)
+             
+             single_sigmoid_out=single_sigmoid_mod.fit(y_data,single_sigmoid_mod_params,x=x_data)
+             current_best_single_sigmoid_amplitude=single_sigmoid_out.best_values['single_sigmoid_amplitude']
+             current_best_single_sigmoid_center=single_sigmoid_out.best_values['single_sigmoid_center']
+             current_best_single_sigmoid_sigma=single_sigmoid_out.best_values['single_sigmoid_sigma']
+             true=y_data.iloc[without_zero_index:]
+             pred=pd.Series(sigmoid_function(x_data.iloc[without_zero_index:],current_best_single_sigmoid_amplitude,
+                                                                                    current_best_single_sigmoid_center,
+                                                                                    current_best_single_sigmoid_sigma))
+             pred_extended=pd.Series(sigmoid_function(new_x_data.loc[first_non_zero_extended_x_index:],current_best_single_sigmoid_amplitude,
+                                                                                    current_best_single_sigmoid_center,
+                                                                                    current_best_single_sigmoid_sigma))
+
+             if best_single_QNRMSE==None or best_single_QNRMSE>normalized_root_mean_squared_error(true,pred,pred_extended):
+                 
+                 best_single_amplitude=current_best_single_sigmoid_amplitude
+                 best_single_center=current_best_single_sigmoid_center
+                 best_single_sigma=current_best_single_sigmoid_sigma
+                 true=y_data.iloc[without_zero_index:]
+                 pred=pd.Series(sigmoid_function(x_data.iloc[without_zero_index:],current_best_single_sigmoid_amplitude,
+                                                                                        current_best_single_sigmoid_center,
+                                                                                        current_best_single_sigmoid_sigma))
+                 pred_extended=pd.Series(sigmoid_function(new_x_data.loc[first_non_zero_extended_x_index:],current_best_single_sigmoid_amplitude,
+                                                                                        current_best_single_sigmoid_center,
+                                                                                        current_best_single_sigmoid_sigma))
+
+                 best_single_QNRMSE=normalized_root_mean_squared_error(true,pred,pred_extended)
+
+        
+         single_sigmoid_y_data=pd.Series(sigmoid_function(new_x_data,best_single_amplitude,
+                                                                                best_single_center,
+                                                                                best_single_sigma))
+
+
+
+         if best_single_QNRMSE<0.5:
+             fit='TypeI'
+             
+
+         ##Define condition to test double sigmoid fit
+         if best_single_QNRMSE<1e-3 or best_single_QNRMSE>0.5 or best_single_sigma<1:
+
+             params=Parameters()
+             params.add('sigmoid_amplitude',value=max(y_data),min=0)
+             params.add('sigmoid_center',value=x0)
+             params.add("sigmoid_sigma",value=104,min=40)
+             #params.add('heaviside_amplitude',value=1,min=0.1)
+             params.add('heaviside_step',value=first_non_zero_x)
+
+             
+             params['sigmoid_amplitude'].set(brute_step=80)
+             params["sigmoid_center"].set(brute_step=30)
+             params["sigmoid_sigma"].set(brute_step=20)
+             #params['heaviside_amplitude'].set(brute_step=0.1)
+             params['heaviside_step'].set(brute_step=5)
+
+
+             fitter=Minimizer(sigmoid_heaviside_to_minimize,params,fcn_args=(x_data,y_data))
+
+             result_brute=fitter.minimize(method='brute',Ns=20,keep=20)
+             
+
+    
+    
+             for current_results in result_brute.candidates:
+                  current_sigmoid_amplitude=current_results.params['sigmoid_amplitude'].value
+                  current_sigmoid_center=current_results.params['sigmoid_center'].value
+                  current_sigmoid_sigma=current_results.params['sigmoid_sigma'].value
+                  #current_heaviside_amplitude=current_results.params['heaviside_amplitude'].value
+                  current_heaviside_step=current_results.params['heaviside_step'].value
+                 
+                  composite_model=Model(Heaviside_function)*Model(sigmoid_function)
+                  pars=composite_model.make_params(amplitude=current_sigmoid_amplitude,
+                                                   center=current_sigmoid_center,
+                                                   sigma=current_sigmoid_sigma,
+                                                   mid=current_heaviside_step)
+                 
+    
+                  compo_out=composite_model.fit(y_data,pars,x=x_data)
+    
+                  # Get parameters best estimations
+                  
+                  true=y_data.iloc[without_zero_index:]
+
+                  pred=pd.Series(sigmoid_heaviside(x_data.iloc[without_zero_index:],compo_out.best_values['amplitude'],compo_out.best_values['center'],compo_out.best_values["sigma"],compo_out.best_values["mid"]))
+
+                  pred_extended=pd.Series(sigmoid_heaviside(new_x_data.loc[first_non_zero_extended_x_index:],compo_out.best_values['amplitude'],compo_out.best_values['center'],compo_out.best_values["sigma"],compo_out.best_values["mid"]))
+
+
+                  if best_compo_QNRMSE==None or best_compo_QNRMSE>normalized_root_mean_squared_error(true,pred,pred_extended):
+
+                      true=y_data.iloc[without_zero_index:]
+                      pred=pd.Series(sigmoid_heaviside(x_data.iloc[without_zero_index:],compo_out.best_values['amplitude'],compo_out.best_values['center'],compo_out.best_values["sigma"],compo_out.best_values["mid"]))
+                      pred_extended=pd.Series(sigmoid_heaviside(new_x_data.loc[first_non_zero_extended_x_index:],compo_out.best_values['amplitude'],compo_out.best_values['center'],compo_out.best_values["sigma"],compo_out.best_values["mid"]))
+                     
+                      best_compo_QNRMSE=normalized_root_mean_squared_error(true,pred,pred_extended)
+                      
+                      best_sigmoid_amplitude=compo_out.best_values["amplitude"]
+                      best_sigmoid_center=compo_out.best_values["center"]
+                      best_sigmoid_sigma=compo_out.best_values["sigma"]
+                      best_heaviside_step=compo_out.best_values['mid']
+                      
+                      
+
+             computed_y_data=pd.Series(pd.Series(sigmoid_heaviside(new_x_data,best_sigmoid_amplitude,best_sigmoid_center,best_sigmoid_sigma,best_heaviside_step)))
+            
+             model_table=pd.DataFrame(np.column_stack((new_x_data,computed_y_data)),columns=["Stim_amp_pA","Frequency_Hz"])
+
+             typeII_tested=True
+
+             if 2*best_compo_QNRMSE<=best_single_QNRMSE and best_compo_QNRMSE<0.1 and best_compo_QNRMSE>1e-4:
+                 fit= 'TypeII'
+             elif best_single_QNRMSE<0.5 and best_single_sigma>1:
+                 fit='TypeI'
+             else:
+                 fit='Rejected'
+                 
+         color_dict={"COARSE":"green",
+                     "FINEST":'red'}
+
+         if best_compo_QNRMSE==None:
+             best_compo_QNRMSE=np.nan
+
+         
+
+         if do_plot == True:
+              single_sigmoid_table=pd.DataFrame(np.column_stack((new_x_data,single_sigmoid_y_data)),columns=["Stim_amp_pA","Frequency_Hz"])
+              my_plot=ggplot(f_I_table,aes(x=f_I_table["Stim_amp_pA"],y=f_I_table["Frequency_Hz"],color=f_I_table["stimulus_description"]))+geom_point()+scale_color_manual(values=color_dict)
+              if fit=='TypeII':
+                   compo_line='solid'
+                   single_line='dashed'
+                   my_plot+=geom_line(model_table,aes(x=model_table["Stim_amp_pA"],y=model_table['Frequency_Hz']),color='red',linetype=compo_line)
+              elif fit=='TypeI':
+                   compo_line='dashed'
+                   single_line='solid'
+
+                   if typeII_tested==True:
+
+                       my_plot+=geom_line(model_table,aes(x=model_table["Stim_amp_pA"],y=model_table['Frequency_Hz']),color='red',linetype=compo_line)
+
+              else:
+                  single_line="dashed"
+              
+              my_plot+=geom_line(single_sigmoid_table,aes(x=single_sigmoid_table["Stim_amp_pA"],y=single_sigmoid_table['Frequency_Hz']),color='blue',linetype=single_line)
+
+              my_plot+=xlab(str("Stim_amp_pA_id: "+str_cell_id))
+              print(my_plot)
+              
+         end_time=time.time()
+         
+         #print("Total time= ",end_time-start_time,"s ; Time compo brute=",time_1-start_time,"s ; Time single brute=",time_2-time_1)
+         return fit,best_single_QNRMSE,best_single_amplitude,best_single_center,best_single_sigma,best_compo_QNRMSE,best_heaviside_step,best_sigmoid_amplitude,best_sigmoid_center,best_sigmoid_sigma
+         
+    except(StopIteration):
+         print("Stop Iteration")
+         return("Failed",np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+         
+    except (ValueError):
+         print("stopped_valueError")
+         
+         return("Failed",np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+        
+    except (RuntimeError):
+         print("Can't fit sigmoid, least-square optimization failed")
+        
+         return('Failed',np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+    except (TypeError):
+         print("Stop Type Error")
+         return('Failed',np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+     
+
+def heaviside_compute_f_I_params(fit_table,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0,do_plot=False):
     mycol=["Cell_id","Fit","Gain","Threshold","Saturation"]
     f_I_params_table=pd.DataFrame(columns=mycol)
-    for current_cell_id in fit_table.loc[:,"cell_id"]:
-        current_fit_value=fit_table[fit_table['cell_id']==str(current_cell_id)].fit.values[0]
+    for current_cell_id in fit_table.loc[:,"Cell_id"]:
+        current_fit_value=fit_table[fit_table['Cell_id']==str(current_cell_id)].fit.values[0]
         
         current_f_I_table=extract_stim_freq(float(current_cell_id), species_sweep_stim_table,per_time=per_time,first_x_ms=first_x_ms,per_nth_spike=per_nth_spike,first_nth_spike=first_nth_spike)
         coarse_f_I_table=current_f_I_table[current_f_I_table['stimulus_description']=='COARSE']
@@ -2122,9 +2574,9 @@ def compute_f_I_params(fit_table,species_sweep_stim_table,per_time=False,first_x
         new_x_data=pd.Series(np.arange(min(x_data),max(x_data),0.1))
         if current_fit_value == 'TypeI':
             
-            single_amplitude_value=fit_table[fit_table['cell_id']==str(current_cell_id)].best_single_amplitude.values[0]
-            single_center_value=fit_table[fit_table['cell_id']==str(current_cell_id)].best_single_center.values[0]
-            single_sigma_value=fit_table[fit_table['cell_id']==str(current_cell_id)].best_single_sigma.values[0]
+            single_amplitude_value=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_single_amplitude.values[0]
+            single_center_value=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_single_center.values[0]
+            single_sigma_value=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_single_sigma.values[0]
             single_sigmoid_y_data=pd.Series(sigmoid_function(new_x_data,single_amplitude_value,single_center_value,single_sigma_value))
                                                                                    
             
@@ -2153,11 +2605,11 @@ def compute_f_I_params(fit_table,species_sweep_stim_table,per_time=False,first_x
                 
                 
         elif current_fit_value == 'TypeII':
-            compo_step_amplitude=fit_table[fit_table['cell_id']==str(current_cell_id)].best_step_amplitude.values[0]
-            compo_step_center=fit_table[fit_table['cell_id']==str(current_cell_id)].best_step_center.values[0]
-            compo_sigmoid_amplitude=fit_table[fit_table['cell_id']==str(current_cell_id)].best_sigmoid_amplitude.values[0]
-            compo_sigmoid_center=fit_table[fit_table['cell_id']==str(current_cell_id)].best_sigmoid_center.values[0]
-            compo_sigmoid_sigma=fit_table[fit_table['cell_id']==str(current_cell_id)].best_sigmoid_sigma.values[0]
+            compo_step_amplitude=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_step_amplitude.values[0]
+            compo_step_center=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_step_center.values[0]
+            compo_sigmoid_amplitude=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_sigmoid_amplitude.values[0]
+            compo_sigmoid_center=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_sigmoid_center.values[0]
+            compo_sigmoid_sigma=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_sigmoid_sigma.values[0]
             new_y_data=pd.Series(compo(new_x_data,compo_step_center,compo_step_amplitude,compo_sigmoid_amplitude,compo_sigmoid_center,compo_sigmoid_sigma))
          
             extended_f_I_table=pd.DataFrame(np.column_stack((new_x_data,new_y_data)),columns=["Stim_amp_pA","Frequency_Hz"])
@@ -2167,10 +2619,10 @@ def compute_f_I_params(fit_table,species_sweep_stim_table,per_time=False,first_x
             linear_portion_start_index+=1
             linear_portion_y_data=new_y_data.iloc[linear_portion_start_index:]
             linear_portion_x_data=new_x_data.iloc[linear_portion_start_index:]
-            print(pd.DataFrame(np.column_stack((linear_portion_x_data,linear_portion_y_data)),columns=["Stim_amp_pA","Frequency_Hz"]))
-            twentyfive_index=next(x for x, val in enumerate(linear_portion_y_data) if val >(1.25*(min(linear_portion_y_data))))
-            seventyfive_index=next(x for x, val in enumerate(linear_portion_y_data) if val >(1.75*(min(linear_portion_y_data))))
-            print(max(linear_portion_y_data)-min(linear_portion_y_data))
+            
+            twentyfive_index=next(x for x, val in enumerate(linear_portion_y_data) if val >((min(linear_portion_y_data)+0.25*(max(linear_portion_y_data)-min(linear_portion_y_data)))))
+            seventyfive_index=next(x for x, val in enumerate(linear_portion_y_data) if val >((min(linear_portion_y_data)+0.75*(max(linear_portion_y_data)-min(linear_portion_y_data)))))
+            
             Gain,Intercept=fit_specimen_fi_slope(linear_portion_x_data.iloc[twentyfive_index:seventyfive_index],linear_portion_y_data.iloc[twentyfive_index:seventyfive_index])
             first_derivative=new_y_data.diff()
             Threshold=compo_step_center
@@ -2191,6 +2643,101 @@ def compute_f_I_params(fit_table,species_sweep_stim_table,per_time=False,first_x
             myplot+=geom_point(Threshold_table,aes(x=Threshold_table["Stim_amp_pA"],y=Threshold_table["Frequency_Hz"]),color='green')
             if Saturation!=np.nan:
                 myplot+=geom_abline(aes(intercept=Saturation,slope=0))
+            myplot+=xlab(str("Stim_amp_pA_id: "+str(current_cell_id)))
+            print(myplot)
+        new_line=pd.Series([str(current_cell_id),current_fit_value,Gain,Threshold,Saturation],
+                       index=mycol)
+        f_I_params_table=f_I_params_table.append(new_line,ignore_index=True)
+        
+        
+    return(f_I_params_table)
+        
+
+
+
+def compute_f_I_params(fit_table,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0,do_plot=False):
+    mycol=["Cell_id","Fit","Gain","Threshold","Saturation"]
+    f_I_params_table=pd.DataFrame(columns=mycol)
+    for current_cell_id in fit_table.loc[:,"Cell_id"]:
+        current_fit_value=fit_table[fit_table['Cell_id']==str(current_cell_id)].fit.values[0]
+        
+        current_f_I_table=extract_stim_freq(float(current_cell_id), species_sweep_stim_table,per_time=per_time,first_x_ms=first_x_ms,per_nth_spike=per_nth_spike,first_nth_spike=first_nth_spike)
+        coarse_f_I_table=current_f_I_table[current_f_I_table['stimulus_description']=='COARSE']
+        
+        x_data=coarse_f_I_table.loc[:,'Stim_amp_pA']
+        new_x_data=pd.Series(np.arange(min(x_data),max(x_data),0.1))
+        if current_fit_value == 'TypeI':
+            
+            single_amplitude_value=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_single_amplitude.values[0]
+            single_center_value=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_single_center.values[0]
+            single_sigma_value=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_single_sigma.values[0]
+            single_sigmoid_y_data=pd.Series(sigmoid_function(new_x_data,single_amplitude_value,single_center_value,single_sigma_value))
+                                                                                   
+            
+            twentyfive_index=next(x for x, val in enumerate(single_sigmoid_y_data) if val >(0.25*max(single_sigmoid_y_data)))
+            seventyfive_index=next(x for x, val in enumerate(single_sigmoid_y_data) if val >(0.75*max(single_sigmoid_y_data)))
+            #fit linear line to linear sigmoid portion
+            Gain,Intercept=fit_specimen_fi_slope(new_x_data.iloc[twentyfive_index:seventyfive_index],sigmoid_function(new_x_data.iloc[twentyfive_index:seventyfive_index],single_amplitude_value,single_center_value,single_sigma_value))
+            Threshold=(0-Intercept)/Gain
+            extended_f_I_table=pd.DataFrame(np.column_stack((new_x_data,single_sigmoid_y_data)),columns=["Stim_amp_pA","Frequency_Hz"])
+            my_derivative=np.array(derivative(sigmoid_function,new_x_data,dx=1e-1,args=(single_amplitude_value,single_center_value,single_sigma_value)))
+            end_slope=np.mean(my_derivative[-10:])
+            Saturation=np.nan
+            if end_slope <=0.001:
+                Saturation=np.mean(single_sigmoid_y_data[-10:])
+                
+            if do_plot==True:
+                
+                myplot=ggplot(coarse_f_I_table,aes(x=coarse_f_I_table["Stim_amp_pA"],y=coarse_f_I_table["Frequency_Hz"]))+geom_point()
+                myplot+=geom_line(extended_f_I_table,aes(x=extended_f_I_table["Stim_amp_pA"],y=extended_f_I_table["Frequency_Hz"]),color='blue')
+                myplot+=geom_abline(aes(intercept=Intercept,slope=Gain))
+                Threshold_table=pd.DataFrame({'Stim_amp_pA':[Threshold],'Frequency_Hz':[0]})
+                myplot+=geom_point(Threshold_table,aes(x=Threshold_table["Stim_amp_pA"],y=Threshold_table["Frequency_Hz"]),color='green')
+                if Saturation!=np.nan:
+                    myplot+=geom_abline(aes(intercept=Saturation,slope=0))
+                
+                
+                
+        elif current_fit_value == 'TypeII':
+            compo_step_amplitude=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_step_amplitude.values[0]
+            compo_step_center=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_step_center.values[0]
+            compo_sigmoid_amplitude=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_sigmoid_amplitude.values[0]
+            compo_sigmoid_center=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_sigmoid_center.values[0]
+            compo_sigmoid_sigma=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_sigmoid_sigma.values[0]
+            new_y_data=pd.Series(compo(new_x_data,compo_step_center,compo_step_amplitude,compo_sigmoid_amplitude,compo_sigmoid_center,compo_sigmoid_sigma))
+         
+            extended_f_I_table=pd.DataFrame(np.column_stack((new_x_data,new_y_data)),columns=["Stim_amp_pA","Frequency_Hz"])
+           
+            second_derivative=new_y_data.diff().diff()
+            linear_portion_start_index=next(x for x, val in enumerate(second_derivative) if val <0)
+            linear_portion_start_index+=1
+            linear_portion_y_data=new_y_data.iloc[linear_portion_start_index:]
+            linear_portion_x_data=new_x_data.iloc[linear_portion_start_index:]
+            
+            twentyfive_index=next(x for x, val in enumerate(linear_portion_y_data) if val >((min(linear_portion_y_data)+0.25*(max(linear_portion_y_data)-min(linear_portion_y_data)))))
+            seventyfive_index=next(x for x, val in enumerate(linear_portion_y_data) if val >((min(linear_portion_y_data)+0.75*(max(linear_portion_y_data)-min(linear_portion_y_data)))))
+            
+            Gain,Intercept=fit_specimen_fi_slope(linear_portion_x_data.iloc[twentyfive_index:seventyfive_index],linear_portion_y_data.iloc[twentyfive_index:seventyfive_index])
+            first_derivative=new_y_data.diff()
+            Threshold=compo_step_center
+            Saturation=np.nan
+            if np.mean(first_derivative[-100:]) <=0.001:
+                Saturation=np.mean(first_derivative[-100:])
+            
+            
+        else:
+            Gain,Threshold,Saturation=np.nan,np.nan,np.nan
+            
+        if do_plot==True and current_fit_value=='TypeI' or do_plot==True and current_fit_value=='TypeII':
+            
+            myplot=ggplot(coarse_f_I_table,aes(x=coarse_f_I_table["Stim_amp_pA"],y=coarse_f_I_table["Frequency_Hz"]))+geom_point()
+            myplot+=geom_line(extended_f_I_table,aes(x=extended_f_I_table["Stim_amp_pA"],y=extended_f_I_table["Frequency_Hz"]),color='blue')
+            myplot+=geom_abline(aes(intercept=Intercept,slope=Gain))
+            Threshold_table=pd.DataFrame({'Stim_amp_pA':[Threshold],'Frequency_Hz':[0]})
+            myplot+=geom_point(Threshold_table,aes(x=Threshold_table["Stim_amp_pA"],y=Threshold_table["Frequency_Hz"]),color='green')
+            if Saturation!=np.nan:
+                myplot+=geom_abline(aes(intercept=Saturation,slope=0))
+            myplot+=xlab(str("Stim_amp_pA_id: "+str(current_cell_id)))
             print(myplot)
         new_line=pd.Series([str(current_cell_id),current_fit_value,Gain,Threshold,Saturation],
                        index=mycol)
@@ -2212,12 +2759,41 @@ def my_expression(x,step_center,step_amplitude):
 def compo(x,step_center,step_amplitude,amplitude,center,sigma):
     y=sigmoid_function(x,amplitude,center,sigma)*my_expression(x,step_center,step_amplitude)
     return y
-def jump(x, mid):
+
+def sigmoid_heaviside(x,sigmoid_amplitude,sigmoid_center,sigmoid_sigma,heaviside_step):
+    heaviside=Heaviside_function(x,heaviside_step)
+    y=(sigmoid_amplitude*(1-(1/(1+np.exp((x-sigmoid_center)/sigmoid_sigma)))))*heaviside
+    return y
+def Heaviside_function(x, mid):
     """Heaviside step function."""
-    o = np.zeros(x.size)
-    imid = max(np.where(x <= mid)[0])
-    o[imid:] = 1.0
-    return o
+    
+    if mid<=min(x):
+        o=np.ones(x.size)
+        return o
+    elif mid>=max(x):
+        o=np.zeros(x.size)
+        return o
+    else:
+        o = np.zeros(x.size)
+        
+        imid = max(np.where(x < mid)[0])
+        
+        o[imid:] = 1
+        return o
+
+def sigmoid_heaviside_to_minimize(params,x_data,data):
+    sigmoid_amplitude=params['sigmoid_amplitude']
+    sigmoid_center=params["sigmoid_center"]
+    sigmoid_sigma=params["sigmoid_sigma"]
+    heaviside_step=params["heaviside_step"]
+   # heaviside_amplitude=params["heaviside_amplitude"]
+    
+   
+
+    heaviside=Heaviside_function(x_data,heaviside_step)
+    
+    model=(sigmoid_amplitude*(1-(1/(1+np.exp((x_data-sigmoid_center)/sigmoid_sigma)))))*heaviside
+    return model
 
 def relative_squared_error(true, pred):
     true_mean = np.mean(true)
@@ -2255,6 +2831,24 @@ def coarse_or_fine_sweep(cell_id):
             all_sweeps_table.iloc[elt,1]='FINEST'    
     return(all_sweeps_table)
     
+def take_upper(string):
+    upper = ''
+    for char in string:
+    #check uppercase characters
+        if char.isupper():
+            upper += char
+# print uppercase characters
+    return(upper)
+def take_until_number(string):
+    upper = ''
+    for char in string:
+    #check uppercase characters
+        if char.isnumeric():
+            return upper
+        else:
+            upper += char
+# print uppercase characters
+    return(upper)
 
 #%%
 start_time=time.time()
@@ -2262,12 +2856,12 @@ total_time=0
 number_done=0
 mylist=mouse_id_list
 mycol=['cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
-fit_table=pd.DataFrame(columns=mycol)
+new_fit_table=pd.DataFrame(columns=mycol)
 for cell_id in mylist:
     start_time=time.time()
-    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=1000,do_plot=True)],
+    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=1000,do_plot=False)],
                    index=mycol)
-    fit_table=fit_table.append(new_line,ignore_index=True)
+    new_fit_table=new_fit_table.append(new_line,ignore_index=True)
     end_time=time.time()
     number_done+=1
     number_remaining=len(mylist)-number_done
@@ -2280,7 +2874,7 @@ for cell_id in mylist:
     print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
 
 print("Total time= ",total_time)
-
+f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=1000,per_nth_spike=False,first_nth_spike=0,do_plot=False)
 #%%
 #plt.hist(new_fit_table['bestNRMSE'],bins=600)
 plt.scatter(new_fit_table['bestNRMSE'],new_fit_table['best_sigmoid_sigma'],alpha=0.05)
