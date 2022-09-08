@@ -23,7 +23,7 @@ from scipy.stats import linregress
 from scipy import optimize
 from scipy.optimize import curve_fit
 import random
-import plotly.express as plotly
+
 
 from allensdk.core.swc import Marker
 import matplotlib.patches as mpatches
@@ -92,7 +92,17 @@ print("Total time= ",total_time)
     
 #%%5ms
 
-mycol=['Cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
+mycol=['Cell_id',
+       "fit",
+       "best_single_QNRMSE",
+       "best_single_amplitude",
+       "best_single_center",
+       "best_single_sigma",
+       "best_compo_QNRMSE",
+       "best_heaviside_step",
+       "best_sigmoid_amplitude",
+       "best_sigmoid_center",
+       "best_sigmoid_sigma"]
 units=['--',
        '--',
        '--',
@@ -100,9 +110,7 @@ units=['--',
        'pA',
        'Hz/pA',
        '--',
-       'Hz',
        'pA',
-       'Hz/pA',
        'Hz',
        'pA',
        'Hz/pA']
@@ -112,34 +120,24 @@ units=['--',
 first_line=pd.Series(mycol,index=mycol)
 second_line=pd.Series(units,index=mycol)
 first_two_lines=pd.DataFrame([first_line,second_line])
-start_time=time.time()
-total_time=0
-number_done=0
 mylist=mouse_id_list
 
 new_fit_table=pd.DataFrame(columns=mycol)
-for cell_id in mylist:
+for cell_id in tqdm(mylist):
     start_time=time.time()
-    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=5,do_plot=False)],
+    
+    new_line=pd.Series([str(cell_id),*heaviside_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=5,do_plot=False)],
                    index=mycol)
     new_fit_table=new_fit_table.append(new_line,ignore_index=True)
-    end_time=time.time()
-    number_done+=1
-    number_remaining=len(mylist)-number_done
-    total_time+=end_time-start_time
-    remaining_time=number_remaining*total_time/number_done
-    total_remaining_minutes=remaining_time//60
-    remaining_hours=total_remaining_minutes//60
-    remaining_minutes=total_remaining_minutes%60
-    remaining_seconds=remaining_time%60
-    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
 
-print("Total time new_fit_sigmoid= ",total_time)
+    
+
+
 
 
 fit_table=pd.concat([first_two_lines,new_fit_table])
 fit_table=fit_table.iloc[1:,:]
-fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/fit_table_5ms.csv',na_rep='nan',index=False)
+fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_09_08/fit_table_5ms.csv',na_rep='nan',index=False)
     
 mycol_units=["Cell_id","Fit","Gain","Threshold","Saturation"]
 units=["--","--","Hz/pA","pA",'Hz']
@@ -148,18 +146,28 @@ new_second_line=pd.Series(units,index=mycol_units)
 new_first_two_lines=pd.DataFrame([new_first_line,new_second_line])
 main_start_time=time.time()
 
-f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=5,per_nth_spike=False,first_nth_spike=0,do_plot=False)
+f_I_table=heaviside_compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=5,per_nth_spike=False,first_nth_spike=0,do_plot=False)
 f_I_table=pd.concat([new_first_two_lines,f_I_table])
 f_I_table=f_I_table.iloc[1:,:]
-f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/f_I_table_5ms.csv',na_rep='nan',index=False)
-end_time=time.time()
+f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_09_08/f_I_table_5ms.csv',na_rep='nan',index=False)
 
-print("time for f_I_table=",end_time-start_time,"s")
+
+
 
 
 #%% 10ms
 
-mycol=['Cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
+mycol=['Cell_id',
+       "fit",
+       "best_single_QNRMSE",
+       "best_single_amplitude",
+       "best_single_center",
+       "best_single_sigma",
+       "best_compo_QNRMSE",
+       "best_heaviside_step",
+       "best_sigmoid_amplitude",
+       "best_sigmoid_center",
+       "best_sigmoid_sigma"]
 units=['--',
        '--',
        '--',
@@ -167,9 +175,7 @@ units=['--',
        'pA',
        'Hz/pA',
        '--',
-       'Hz',
        'pA',
-       'Hz/pA',
        'Hz',
        'pA',
        'Hz/pA']
@@ -179,51 +185,49 @@ units=['--',
 first_line=pd.Series(mycol,index=mycol)
 second_line=pd.Series(units,index=mycol)
 first_two_lines=pd.DataFrame([first_line,second_line])
-start_time=time.time()
-total_time=0
-number_done=0
 mylist=mouse_id_list
 
 new_fit_table=pd.DataFrame(columns=mycol)
-for cell_id in mylist:
+for cell_id in tqdm(mylist):
     start_time=time.time()
-    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=10,do_plot=False)],
+    
+    new_line=pd.Series([str(cell_id),*heaviside_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=10,do_plot=False)],
                    index=mycol)
     new_fit_table=new_fit_table.append(new_line,ignore_index=True)
-    end_time=time.time()
-    number_done+=1
-    number_remaining=len(mylist)-number_done
-    total_time+=end_time-start_time
-    remaining_time=number_remaining*total_time/number_done
-    total_remaining_minutes=remaining_time//60
-    remaining_hours=total_remaining_minutes//60
-    remaining_minutes=total_remaining_minutes%60
-    remaining_seconds=remaining_time%60
-    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
-
-print("Total time new_fit_sigmoid= ",total_time)
 
 
 fit_table=pd.concat([first_two_lines,new_fit_table])
 fit_table=fit_table.iloc[1:,:]
-fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/fit_table_10ms.csv',na_rep='nan',index=False)
+fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_09_08/fit_table_10ms.csv',na_rep='nan',index=False)
     
 mycol_units=["Cell_id","Fit","Gain","Threshold","Saturation"]
+units=["--","--","Hz/pA","pA",'Hz']
 new_first_line=pd.Series(mycol_units,index=mycol_units)
 new_second_line=pd.Series(units,index=mycol_units)
 new_first_two_lines=pd.DataFrame([new_first_line,new_second_line])
 main_start_time=time.time()
 
-f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=10,per_nth_spike=False,first_nth_spike=0,do_plot=False)
+f_I_table=heaviside_compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=10,per_nth_spike=False,first_nth_spike=0,do_plot=False)
 f_I_table=pd.concat([new_first_two_lines,f_I_table])
 f_I_table=f_I_table.iloc[1:,:]
-f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/f_I_table_10ms.csv',na_rep='nan',index=False)
-end_time=time.time()
+f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_09_08/f_I_table_10ms.csv',na_rep='nan',index=False)
 
-print("time for f_I_table=",end_time-start_time,"s")
+
+
+
 #%% 25ms
 
-mycol=['Cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
+mycol=['Cell_id',
+       "fit",
+       "best_single_QNRMSE",
+       "best_single_amplitude",
+       "best_single_center",
+       "best_single_sigma",
+       "best_compo_QNRMSE",
+       "best_heaviside_step",
+       "best_sigmoid_amplitude",
+       "best_sigmoid_center",
+       "best_sigmoid_sigma"]
 units=['--',
        '--',
        '--',
@@ -231,9 +235,7 @@ units=['--',
        'pA',
        'Hz/pA',
        '--',
-       'Hz',
        'pA',
-       'Hz/pA',
        'Hz',
        'pA',
        'Hz/pA']
@@ -243,52 +245,45 @@ units=['--',
 first_line=pd.Series(mycol,index=mycol)
 second_line=pd.Series(units,index=mycol)
 first_two_lines=pd.DataFrame([first_line,second_line])
-start_time=time.time()
-total_time=0
-number_done=0
 mylist=mouse_id_list
 
 new_fit_table=pd.DataFrame(columns=mycol)
-for cell_id in mylist:
+for cell_id in tqdm(mylist):
     start_time=time.time()
-    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=25,do_plot=False)],
+    
+    new_line=pd.Series([str(cell_id),*heaviside_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=25,do_plot=False)],
                    index=mycol)
     new_fit_table=new_fit_table.append(new_line,ignore_index=True)
-    end_time=time.time()
-    number_done+=1
-    number_remaining=len(mylist)-number_done
-    total_time+=end_time-start_time
-    remaining_time=number_remaining*total_time/number_done
-    total_remaining_minutes=remaining_time//60
-    remaining_hours=total_remaining_minutes//60
-    remaining_minutes=total_remaining_minutes%60
-    remaining_seconds=remaining_time%60
-    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
-
-print("Total time new_fit_sigmoid= ",total_time)
 
 
 fit_table=pd.concat([first_two_lines,new_fit_table])
 fit_table=fit_table.iloc[1:,:]
-fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/fit_table_25ms.csv',na_rep='nan',index=False)
+fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_09_08/fit_table_25ms.csv',na_rep='nan',index=False)
     
 mycol_units=["Cell_id","Fit","Gain","Threshold","Saturation"]
+units=["--","--","Hz/pA","pA",'Hz']
 new_first_line=pd.Series(mycol_units,index=mycol_units)
 new_second_line=pd.Series(units,index=mycol_units)
 new_first_two_lines=pd.DataFrame([new_first_line,new_second_line])
 main_start_time=time.time()
 
-f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=25,per_nth_spike=False,first_nth_spike=0,do_plot=False)
+f_I_table=heaviside_compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=25,per_nth_spike=False,first_nth_spike=0,do_plot=False)
 f_I_table=pd.concat([new_first_two_lines,f_I_table])
 f_I_table=f_I_table.iloc[1:,:]
-f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/f_I_table_25ms.csv',na_rep='nan',index=False)
-end_time=time.time()
-
-print("time for f_I_table=",end_time-start_time,"s")
+f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_09_08/f_I_table_25ms.csv',na_rep='nan',index=False)
 #%% 50ms
 
-
-mycol=['Cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
+mycol=['Cell_id',
+       "fit",
+       "best_single_QNRMSE",
+       "best_single_amplitude",
+       "best_single_center",
+       "best_single_sigma",
+       "best_compo_QNRMSE",
+       "best_heaviside_step",
+       "best_sigmoid_amplitude",
+       "best_sigmoid_center",
+       "best_sigmoid_sigma"]
 units=['--',
        '--',
        '--',
@@ -296,9 +291,7 @@ units=['--',
        'pA',
        'Hz/pA',
        '--',
-       'Hz',
        'pA',
-       'Hz/pA',
        'Hz',
        'pA',
        'Hz/pA']
@@ -308,52 +301,47 @@ units=['--',
 first_line=pd.Series(mycol,index=mycol)
 second_line=pd.Series(units,index=mycol)
 first_two_lines=pd.DataFrame([first_line,second_line])
-start_time=time.time()
-total_time=0
-number_done=0
 mylist=mouse_id_list
 
 new_fit_table=pd.DataFrame(columns=mycol)
-for cell_id in mylist:
+for cell_id in tqdm(mylist):
     start_time=time.time()
-    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=50,do_plot=False)],
+    
+    new_line=pd.Series([str(cell_id),*heaviside_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=50,do_plot=False)],
                    index=mycol)
     new_fit_table=new_fit_table.append(new_line,ignore_index=True)
-    end_time=time.time()
-    number_done+=1
-    number_remaining=len(mylist)-number_done
-    total_time+=end_time-start_time
-    remaining_time=number_remaining*total_time/number_done
-    total_remaining_minutes=remaining_time//60
-    remaining_hours=total_remaining_minutes//60
-    remaining_minutes=total_remaining_minutes%60
-    remaining_seconds=remaining_time%60
-    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
-
-print("Total time new_fit_sigmoid= ",total_time)
 
 
 fit_table=pd.concat([first_two_lines,new_fit_table])
 fit_table=fit_table.iloc[1:,:]
-fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/fit_table_50ms.csv',na_rep='nan',index=False)
+fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_09_08/fit_table_50ms.csv',na_rep='nan',index=False)
     
 mycol_units=["Cell_id","Fit","Gain","Threshold","Saturation"]
+units=["--","--","Hz/pA","pA",'Hz']
 new_first_line=pd.Series(mycol_units,index=mycol_units)
 new_second_line=pd.Series(units,index=mycol_units)
 new_first_two_lines=pd.DataFrame([new_first_line,new_second_line])
 main_start_time=time.time()
 
-f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=50,per_nth_spike=False,first_nth_spike=0,do_plot=False)
+f_I_table=heaviside_compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=50,per_nth_spike=False,first_nth_spike=0,do_plot=False)
 f_I_table=pd.concat([new_first_two_lines,f_I_table])
 f_I_table=f_I_table.iloc[1:,:]
-f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/f_I_table_50ms.csv',na_rep='nan',index=False)
-end_time=time.time()
-
-print("time for f_I_table=",end_time-start_time,"s")
+f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_09_08/f_I_table_50ms.csv',na_rep='nan',index=False)
 #%% 100ms
 
 
-mycol=['Cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
+
+mycol=['Cell_id',
+       "fit",
+       "best_single_QNRMSE",
+       "best_single_amplitude",
+       "best_single_center",
+       "best_single_sigma",
+       "best_compo_QNRMSE",
+       "best_heaviside_step",
+       "best_sigmoid_amplitude",
+       "best_sigmoid_center",
+       "best_sigmoid_sigma"]
 units=['--',
        '--',
        '--',
@@ -361,9 +349,7 @@ units=['--',
        'pA',
        'Hz/pA',
        '--',
-       'Hz',
        'pA',
-       'Hz/pA',
        'Hz',
        'pA',
        'Hz/pA']
@@ -373,51 +359,45 @@ units=['--',
 first_line=pd.Series(mycol,index=mycol)
 second_line=pd.Series(units,index=mycol)
 first_two_lines=pd.DataFrame([first_line,second_line])
-start_time=time.time()
-total_time=0
-number_done=0
 mylist=mouse_id_list
 
 new_fit_table=pd.DataFrame(columns=mycol)
-for cell_id in mylist:
+for cell_id in tqdm(mylist):
     start_time=time.time()
-    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=100,do_plot=False)],
+    
+    new_line=pd.Series([str(cell_id),*heaviside_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=100,do_plot=False)],
                    index=mycol)
     new_fit_table=new_fit_table.append(new_line,ignore_index=True)
-    end_time=time.time()
-    number_done+=1
-    number_remaining=len(mylist)-number_done
-    total_time+=end_time-start_time
-    remaining_time=number_remaining*total_time/number_done
-    total_remaining_minutes=remaining_time//60
-    remaining_hours=total_remaining_minutes//60
-    remaining_minutes=total_remaining_minutes%60
-    remaining_seconds=remaining_time%60
-    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
-
-print("Total time new_fit_sigmoid= ",total_time)
 
 
 fit_table=pd.concat([first_two_lines,new_fit_table])
 fit_table=fit_table.iloc[1:,:]
-fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/fit_table_100ms.csv',na_rep='nan',index=False)
+fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_09_08/fit_table_100ms.csv',na_rep='nan',index=False)
     
 mycol_units=["Cell_id","Fit","Gain","Threshold","Saturation"]
+units=["--","--","Hz/pA","pA",'Hz']
 new_first_line=pd.Series(mycol_units,index=mycol_units)
 new_second_line=pd.Series(units,index=mycol_units)
 new_first_two_lines=pd.DataFrame([new_first_line,new_second_line])
 main_start_time=time.time()
 
-f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=100,per_nth_spike=False,first_nth_spike=0,do_plot=False)
+f_I_table=heaviside_compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=100,per_nth_spike=False,first_nth_spike=0,do_plot=False)
 f_I_table=pd.concat([new_first_two_lines,f_I_table])
 f_I_table=f_I_table.iloc[1:,:]
-f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/f_I_table_100ms.csv',na_rep='nan',index=False)
-end_time=time.time()
-
-print("time for f_I_table=",end_time-start_time,"s")
+f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_09_08/f_I_table_100ms.csv',na_rep='nan',index=False)
 #%% 250ms
 
-mycol=['Cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
+mycol=['Cell_id',
+       "fit",
+       "best_single_QNRMSE",
+       "best_single_amplitude",
+       "best_single_center",
+       "best_single_sigma",
+       "best_compo_QNRMSE",
+       "best_heaviside_step",
+       "best_sigmoid_amplitude",
+       "best_sigmoid_center",
+       "best_sigmoid_sigma"]
 units=['--',
        '--',
        '--',
@@ -425,9 +405,7 @@ units=['--',
        'pA',
        'Hz/pA',
        '--',
-       'Hz',
        'pA',
-       'Hz/pA',
        'Hz',
        'pA',
        'Hz/pA']
@@ -437,52 +415,46 @@ units=['--',
 first_line=pd.Series(mycol,index=mycol)
 second_line=pd.Series(units,index=mycol)
 first_two_lines=pd.DataFrame([first_line,second_line])
-start_time=time.time()
-total_time=0
-number_done=0
 mylist=mouse_id_list
 
 new_fit_table=pd.DataFrame(columns=mycol)
-for cell_id in mylist:
+for cell_id in tqdm(mylist):
     start_time=time.time()
-    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=250,do_plot=False)],
+    
+    new_line=pd.Series([str(cell_id),*heaviside_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=250,do_plot=False)],
                    index=mycol)
     new_fit_table=new_fit_table.append(new_line,ignore_index=True)
-    end_time=time.time()
-    number_done+=1
-    number_remaining=len(mylist)-number_done
-    total_time+=end_time-start_time
-    remaining_time=number_remaining*total_time/number_done
-    total_remaining_minutes=remaining_time//60
-    remaining_hours=total_remaining_minutes//60
-    remaining_minutes=total_remaining_minutes%60
-    remaining_seconds=remaining_time%60
-    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
-
-print("Total time new_fit_sigmoid= ",total_time)
 
 
 fit_table=pd.concat([first_two_lines,new_fit_table])
 fit_table=fit_table.iloc[1:,:]
-fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/fit_table_250ms.csv',na_rep='nan',index=False)
+fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_09_08/fit_table_250ms.csv',na_rep='nan',index=False)
     
 mycol_units=["Cell_id","Fit","Gain","Threshold","Saturation"]
+units=["--","--","Hz/pA","pA",'Hz']
 new_first_line=pd.Series(mycol_units,index=mycol_units)
 new_second_line=pd.Series(units,index=mycol_units)
 new_first_two_lines=pd.DataFrame([new_first_line,new_second_line])
 main_start_time=time.time()
 
-f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=250,per_nth_spike=False,first_nth_spike=0,do_plot=False)
+f_I_table=heaviside_compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=250,per_nth_spike=False,first_nth_spike=0,do_plot=False)
 f_I_table=pd.concat([new_first_two_lines,f_I_table])
 f_I_table=f_I_table.iloc[1:,:]
-f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/f_I_table_250ms.csv',na_rep='nan',index=False)
-end_time=time.time()
-
-print("time for f_I_table=",end_time-start_time,"s")
+f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_09_08/f_I_table_250ms.csv',na_rep='nan',index=False)
 #%% 500ms
 
 
-mycol=['Cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
+mycol=['Cell_id',
+       "fit",
+       "best_single_QNRMSE",
+       "best_single_amplitude",
+       "best_single_center",
+       "best_single_sigma",
+       "best_compo_QNRMSE",
+       "best_heaviside_step",
+       "best_sigmoid_amplitude",
+       "best_sigmoid_center",
+       "best_sigmoid_sigma"]
 units=['--',
        '--',
        '--',
@@ -490,9 +462,7 @@ units=['--',
        'pA',
        'Hz/pA',
        '--',
-       'Hz',
        'pA',
-       'Hz/pA',
        'Hz',
        'pA',
        'Hz/pA']
@@ -502,52 +472,47 @@ units=['--',
 first_line=pd.Series(mycol,index=mycol)
 second_line=pd.Series(units,index=mycol)
 first_two_lines=pd.DataFrame([first_line,second_line])
-start_time=time.time()
-total_time=0
-number_done=0
 mylist=mouse_id_list
 
 new_fit_table=pd.DataFrame(columns=mycol)
-for cell_id in mylist:
+for cell_id in tqdm(mylist):
     start_time=time.time()
-    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=500,do_plot=False)],
+    
+    new_line=pd.Series([str(cell_id),*heaviside_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=500,do_plot=False)],
                    index=mycol)
     new_fit_table=new_fit_table.append(new_line,ignore_index=True)
-    end_time=time.time()
-    number_done+=1
-    number_remaining=len(mylist)-number_done
-    total_time+=end_time-start_time
-    remaining_time=number_remaining*total_time/number_done
-    total_remaining_minutes=remaining_time//60
-    remaining_hours=total_remaining_minutes//60
-    remaining_minutes=total_remaining_minutes%60
-    remaining_seconds=remaining_time%60
-    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
-
-print("Total time new_fit_sigmoid= ",total_time)
 
 
 fit_table=pd.concat([first_two_lines,new_fit_table])
 fit_table=fit_table.iloc[1:,:]
-fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/fit_table_500ms.csv',na_rep='nan',index=False)
+fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_09_08/fit_table_500ms.csv',na_rep='nan',index=False)
     
 mycol_units=["Cell_id","Fit","Gain","Threshold","Saturation"]
+units=["--","--","Hz/pA","pA",'Hz']
 new_first_line=pd.Series(mycol_units,index=mycol_units)
 new_second_line=pd.Series(units,index=mycol_units)
 new_first_two_lines=pd.DataFrame([new_first_line,new_second_line])
 main_start_time=time.time()
 
-f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=500,per_nth_spike=False,first_nth_spike=0,do_plot=False)
+f_I_table=heaviside_compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=500,per_nth_spike=False,first_nth_spike=0,do_plot=False)
 f_I_table=pd.concat([new_first_two_lines,f_I_table])
 f_I_table=f_I_table.iloc[1:,:]
-f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/f_I_table_500ms.csv',na_rep='nan',index=False)
-end_time=time.time()
-
-print("time for f_I_table=",end_time-start_time,"s")
+f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_09_08/f_I_table_500ms.csv',na_rep='nan',index=False)
 #%% 1000ms
 
 
-mycol=['Cell_id',"fit","best_single_QNRMSE","best_single_amplitude","best_single_center","best_single_sigma","best_compo_QNRMSE","best_step_amplitude","best_step_center","best_step_sigma","best_sigmoid_amplitude","best_sigmoid_center","best_sigmoid_sigma"]
+
+mycol=['Cell_id',
+       "fit",
+       "best_single_QNRMSE",
+       "best_single_amplitude",
+       "best_single_center",
+       "best_single_sigma",
+       "best_compo_QNRMSE",
+       "best_heaviside_step",
+       "best_sigmoid_amplitude",
+       "best_sigmoid_center",
+       "best_sigmoid_sigma"]
 units=['--',
        '--',
        '--',
@@ -555,9 +520,7 @@ units=['--',
        'pA',
        'Hz/pA',
        '--',
-       'Hz',
        'pA',
-       'Hz/pA',
        'Hz',
        'pA',
        'Hz/pA']
@@ -567,50 +530,32 @@ units=['--',
 first_line=pd.Series(mycol,index=mycol)
 second_line=pd.Series(units,index=mycol)
 first_two_lines=pd.DataFrame([first_line,second_line])
-start_time=time.time()
-total_time=0
-number_done=0
 mylist=mouse_id_list
 
 new_fit_table=pd.DataFrame(columns=mycol)
-for cell_id in mylist:
+for cell_id in tqdm(mylist):
     start_time=time.time()
-    new_line=pd.Series([str(cell_id),*new_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=1000,do_plot=False)],
+    
+    new_line=pd.Series([str(cell_id),*heaviside_fit_sigmoid(cell_id,mouse_sweep_stim_table,per_time=True,first_x_ms=1000,do_plot=False)],
                    index=mycol)
     new_fit_table=new_fit_table.append(new_line,ignore_index=True)
-    end_time=time.time()
-    number_done+=1
-    number_remaining=len(mylist)-number_done
-    total_time+=end_time-start_time
-    remaining_time=number_remaining*total_time/number_done
-    total_remaining_minutes=remaining_time//60
-    remaining_hours=total_remaining_minutes//60
-    remaining_minutes=total_remaining_minutes%60
-    remaining_seconds=remaining_time%60
-    print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
-
-print("Total time new_fit_sigmoid= ",total_time)
 
 
 fit_table=pd.concat([first_two_lines,new_fit_table])
 fit_table=fit_table.iloc[1:,:]
-fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/fit_table_1000ms.csv',na_rep='nan',index=False)
+fit_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_09_08/fit_table_1000ms.csv',na_rep='nan',index=False)
     
-
 mycol_units=["Cell_id","Fit","Gain","Threshold","Saturation"]
+units=["--","--","Hz/pA","pA",'Hz']
 new_first_line=pd.Series(mycol_units,index=mycol_units)
 new_second_line=pd.Series(units,index=mycol_units)
 new_first_two_lines=pd.DataFrame([new_first_line,new_second_line])
-
 main_start_time=time.time()
 
-f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=1000,per_nth_spike=False,first_nth_spike=0,do_plot=False)
+f_I_table=heaviside_compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=1000,per_nth_spike=False,first_nth_spike=0,do_plot=False)
 f_I_table=pd.concat([new_first_two_lines,f_I_table])
 f_I_table=f_I_table.iloc[1:,:]
-f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_05_04/f_I_table_1000ms.csv',na_rep='nan',index=False)
-end_time=time.time()
-
-print("time for f_I_table=",end_time-start_time,"s")
+f_I_table.to_csv(path_or_buf='/Users/julienballbe/My_Work/Allen_Data/Feature_computation/2022_09_08/f_I_table_1000ms.csv',na_rep='nan',index=False)
 
 #%%
 mycol_units=["Cell_id","Fit","Gain","Threshold","Saturation"]
@@ -1087,121 +1032,89 @@ def create_species_sweeps_stim_table(species_dict, from_csv=False):
     return full_dataframe
 
 
-def compute_feature(specimen_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0):
-    '''
+def extract_stim_spike_times_table(Cell_id,species_sweep_stim_table,do_save=False):
+    stim_spike_table = pd.DataFrame(columns=['Cell_id', 'Sweep_id', 'Stim_amp_pA','Stim_start_s', "Stim_end_s",'Spike_times_s'])
     
+    my_Cell_data = ctc.get_ephys_data(Cell_id)
 
-    Parameters
-    ----------
-    specimen_id : list
-        list of specimen id.
-    species_sweep_stim_table : DataFrame
-        DataFrame coming from create_species_sweeps_stim_table function.
-    per_time : Boolean, optional
-        Extract feature per time . The default is False.
-    first_x_ms : int, optional
-        If per_time==True , indicate the time to take into account to extract features in ms (x ms after the start of the stimulus). The default is 0.
-    per_nth_spike : Boolean, optional
-        Extract feature per spike number. The default is False.
-    first_nth_spike : int, optional
-        If per_nth_spike==True, indicate the n first spike to take into account for feature extraction. The default is 0.
-
-    Returns
-    -------
-    full_table : DataFrame
-        DataFrame containing the different feature values for each cell .
-
-    '''
-    mycolumns=['Cell_id','Gain','Threshold','Saturation','Neuron_type','NRMSE_sigmoid','NRMSE_composite','Parameter_amplitude','Parameter_center','Parameter_sigma','Starting_frequency_A','Adapt_cst_B','Steady_state_frequency_C','Normalized_starting_freq_Anorm','Normalized_ss_freq_Cnorm','Input_resistance_MOhm']
-    full_table=pd.DataFrame(columns=mycolumns)
-    ephys_features_table=ctc.get_ephys_features()
-    ephys_features_table=pd.DataFrame(ephys_features_table)
-    for current_specimen_id in specimen_id:
-        print(current_specimen_id)
-        estimated_slope,estimated_threshold,estimated_saturation,Neuron_type,my_plot,NRMSE_sigmoid,NRMSE_composite,parameter_amplitude,parameter_center,parameter_sigma=fit_sigmoid(current_specimen_id,
-                                                                                                                                                                                    species_sweep_stim_table,
-                                                                                                                                                                                    per_time=per_time,
-                                                                                                                                                                                    first_x_ms=first_x_ms,
-                                                                                                                                                                                    per_nth_spike=per_nth_spike,
-                                                                                                                                                                                    first_nth_spike=first_nth_spike,
-                                                                                                                                                                                    do_plot=False)
-        A,B,C,my_plot=fit_exponential_decay(current_specimen_id,
-                                            species_sweep_stim_table,
-                                            per_time=per_time,
-                                            first_x_ms=first_x_ms,
-                                            per_spike_nb=per_nth_spike,
-                                            first_nth_spike=first_nth_spike,
-                                            do_plot=False)
-       
-        A_norm=A/(A+C)
-        C_norm=C/(A+C)
-        R_in=ephys_features_table.loc[ephys_features_table["specimen_id"]==current_specimen_id]['input_resistance_mohm'].values[0]
-        new_line=pd.Series([str(current_specimen_id),
-                            round(estimated_slope,3),
-                            round(estimated_threshold,3),
-                            round(estimated_saturation,3),
-                            Neuron_type,
-                            round(NRMSE_sigmoid,3),
-                            round(NRMSE_composite,3),
-                            round(parameter_amplitude,5),
-                            round(parameter_center,5),
-                            round(parameter_sigma,5),
-                            round(A,3),
-                            round(B,3),
-                            round(C,3),
-                            round(A_norm,3),
-                            round(C_norm,3),
-                            round(R_in,3)],
-                           index=mycolumns)
-
-        full_table=full_table.append(new_line, ignore_index=True)
-
-    return full_table
-
-def extract_stim_freq(specimen_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0):
-    '''
-    Function to extract for each specified specimen_id and the corresponding stimulus the frequency of the response
-    Frequency is defined as the number of spikes divided by the time between the stimulus start and the time of the specified index
-    Parameters
-    ----------
-    specimen_id : int
-
-    
-    Returns
-    -------
-    f_I_table : DataFrame
-        DataFrame with a column "specimen_id"(factor),the sweep number (int),the stimulus amplitude in pA(float),and the computed frequency of the response (float).
-    '''
-    
-    f_I_table = pd.DataFrame(columns=['specimen', 'sweep_number', 'Stim_amp_pA', 'Frequency_Hz'])
-    index_stim = species_sweep_stim_table.columns.get_loc('Long Square')
-    index_specimen = species_sweep_stim_table.index[species_sweep_stim_table["specimen_id"] == specimen_id][0]
-    
-    my_specimen_data = ctc.get_ephys_data(specimen_id)
-    sweep_numbers = species_sweep_stim_table.iloc[index_specimen, index_stim]
+    sweep_type=coarse_or_fine_sweep(Cell_id)
+    sweep_type=sweep_type[sweep_type["stimulus_description"]=="COARSE"]
+    coarse_sweep_number=sweep_type.loc[:,"sweep_number"].values
     
     
-    for current_sweep in sweep_numbers:
+    for current_sweep in coarse_sweep_number:
         
-        index_range=my_specimen_data.get_sweep(current_sweep)["index_range"]
         
-        sampling_rate=my_specimen_data.get_sweep(current_sweep)["sampling_rate"]
-        current_stim_array=(my_specimen_data.get_sweep(current_sweep)["stimulus"][0:index_range[1]+1])* 1e12 #to pA
+        index_range=my_Cell_data.get_sweep(current_sweep)["index_range"]
+        
+        sampling_rate=my_Cell_data.get_sweep(current_sweep)["sampling_rate"]
+        current_stim_array=(my_Cell_data.get_sweep(current_sweep)["stimulus"][0:index_range[1]+1])* 1e12 #to pA
     
         
         stim_start_index=index_range[0]+next(x for x, val in enumerate(current_stim_array[index_range[0]:]) if val != 0 )
         current_time_array=np.arange(0, len(current_stim_array)) * (1.0 / sampling_rate)
         
         stim_start_time=current_time_array[stim_start_index]
-       
-       
+        stim_end_time=stim_start_time+1.
         
-        if len(my_specimen_data.get_spike_times(current_sweep)) <1:
+        spike_times=my_Cell_data.get_spike_times(current_sweep)
+        stim_amp=my_Cell_data.get_sweep_metadata(current_sweep)['aibs_stimulus_amplitude_pa']
+        
+        new_line=pd.Series([Cell_id,current_sweep,stim_amp,stim_start_time,stim_end_time,spike_times],
+                           index=['Cell_id', 'Sweep_id', 'Stim_amp_pA','Stim_start_s', "Stim_end_s",'Spike_times_s'])
+        stim_spike_table = stim_spike_table.append(new_line, ignore_index=True)
+        
+    if do_save:
+
+        stim_spike_table.to_csv(str('/Users/julienballbe/My_Work/Allen_Data/Stim_spike_tables/'+str(Cell_id)+'_stim_spike_table.csv'))
+        
+    return stim_spike_table
+        
+    
+        
+        
+    
+    
+    
+                                   
+                                   
+                                   
+                                   
+def extract_stim_freq(Cell_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0):
+    '''
+    Function to extract for each specified Cell_id and the corresponding stimulus the frequency of the response
+    Frequency is defined as the number of spikes divided by the time between the stimulus start and the time of the specified index
+    Parameters
+    ----------
+    Cell_id : int
+
+    
+    Returns
+    -------
+    f_I_table : DataFrame
+        DataFrame with a column "Cell_id"(factor),the sweep number (int),the stimulus amplitude in pA(float),and the computed frequency of the response (float).
+    '''
+    
+    f_I_table = pd.DataFrame(columns=['Cell_id', 'Sweep_number', 'Stim_amp_pA', 'Frequency_Hz'])
+    
+    my_Cell_data = ctc.get_ephys_data(Cell_id)
+    
+    cell_stim_spike_table=extract_stim_spike_times_table(Cell_id,mouse_sweep_stim_table,do_save=False)
+
+    for current_line in range(cell_stim_spike_table.shape[0]):
+        current_sweep=cell_stim_spike_table.iloc[current_line,1]
+
+        
+        stim_start_time=cell_stim_spike_table.iloc[current_line,3]
+        spike_times=cell_stim_spike_table.iloc[current_line,5]
+        
+        
+        if len(spike_times) <1:
             freq = 0
 
         else :
             if per_nth_spike==True:
-                reshaped_spike_times=my_specimen_data.get_spike_times(current_sweep)[:first_nth_spike]
+                reshaped_spike_times=spike_times[:first_nth_spike]
     
                 #nb_spike = len(reshaped_spike_times)
                 t_last_spike = reshaped_spike_times[-1]
@@ -1211,7 +1124,7 @@ def extract_stim_freq(specimen_id,species_sweep_stim_table,per_time=False,first_
             elif per_time==True:
                 end_time=stim_start_time+(first_x_ms*1e-3)
 
-                reshaped_spike_times=my_specimen_data.get_spike_times(current_sweep)[my_specimen_data.get_spike_times(current_sweep) <= end_time ]
+                reshaped_spike_times=spike_times[spike_times <= end_time ]
                 nb_spike = len(reshaped_spike_times)
 
                 if nb_spike !=0:
@@ -1219,136 +1132,36 @@ def extract_stim_freq(specimen_id,species_sweep_stim_table,per_time=False,first_
                     freq=nb_spike/(first_x_ms*1e-3)
                 else:
                     freq=0
-        new_line = pd.Series([int(specimen_id), current_sweep,
-                              my_specimen_data.get_sweep_metadata(current_sweep)['aibs_stimulus_amplitude_pa'],
+        new_line = pd.Series([int(Cell_id), current_sweep,
+                              my_Cell_data.get_sweep_metadata(current_sweep)['aibs_stimulus_amplitude_pa'],
                               freq],
-                             index=['specimen', 'sweep_number', 'Stim_amp_pA', 'Frequency_Hz'])
+                             index=['Cell_id', 'Sweep_number', 'Stim_amp_pA', 'Frequency_Hz'])
         f_I_table = f_I_table.append(new_line, ignore_index=True)
     
-    f_I_table = f_I_table.sort_values(by=["specimen", 'Stim_amp_pA'])
-    f_I_table['specimen'] = pd.Categorical(f_I_table['specimen'])
-    f_I_table['sweep_number']=np.int64(f_I_table['sweep_number'])
-    f_I_table=pd.merge(f_I_table,coarse_or_fine_sweep(specimen_id),on='sweep_number')
-    return f_I_table
+    freq_array=f_I_table.iloc[:,3].values
+    step_array=f_I_table.iloc[1:,3].values-f_I_table.iloc[:-1,3].values
+    first_non_zero=next(x for x, val in enumerate(freq_array) if val != 0 )
+    
+    f_I_table = f_I_table.sort_values(by=["Cell_id", 'Stim_amp_pA'])
+    f_I_table['Cell_id'] = pd.Categorical(f_I_table['Cell_id'])
+    f_I_table['Sweep_number']=np.int64(f_I_table['Sweep_number'])
+
+    if np.count_nonzero(freq_array)<2 or np.count_nonzero(step_array)<3 :
+
+        do_fit=False
+    
+    elif len(freq_array[first_non_zero:]) != np.count_nonzero(freq_array[first_non_zero:]):
+
+        do_fit=False
+    else:
+        do_fit=True
+    return f_I_table,do_fit
     
 
 def mysigmoid(x,maxi,x0,slope):
     y=maxi/(1+np.exp((x0-x)/slope))
     return y
 
-def old_fit_sigmoid(f_I_table):
-    '''
-    Fit a sigmoid curve to the stim/amplitude data points to extract several I/O metrcis : the threshold, the saturation and the gain
-
-    Parameters
-    ----------
-    f_I_table : DataFrame
-        Stimulus_frequency table for one cell.
-
-    Returns
-    -------
-    estimated_gain : float
-        estimated gain of the I/O.
-    estimated_threshold : float
-        estimated neuron threshold.
-    estimated_saturation : float
-        estimated neuron saturation firing rate.
-    my_plot : ggplot
-        plot of the data point with the sigmoid fit and the linear fit to the linear part of the sigmoid.
-    pcov: 2-D array
-        The estimated covariance of popt
-    popt: 1D array
-        Estimated parameters of function fit
-    
-    '''
-    try:
-        x_data=f_I_table.iloc[:,2]
-        y_data=f_I_table.iloc[:,3]
-        
-        
-        ##Get the initial estimate for the fit of sigmoid
-        #Get the maximum firing rate of the data
-        maxi=max(x_data)
-
-        #Get the index corresponding to the median non-zero firing rate
-        
-
-        without_zero_index=next(x for x, val in enumerate(y_data) if val >0 )
-        median_firing_rate_index=next(x for x, val in enumerate(y_data) if val >= np.median(y_data.iloc[without_zero_index:]))
-        #Get the stimulus amplitude correspondingto the median non-zero firing rate
-    
-        x0=x_data.iloc[median_firing_rate_index]
-
-        #Get the slope from the linear fit of the firing rate
-        slope=fit_specimen_fi_slope(x_data,y_data)[0]
-    
-    
-        initial_estimate=[maxi,x0,slope]
-        parameters_boundaries=([0,0,0],[np.inf,np.inf,np.inf])
-        
-        
-        popt,pcov=curve_fit(mysigmoid,x_data,y_data,p0=initial_estimate,bounds=parameters_boundaries,check_finite=False)
-        
-        new_x_data=pd.Series(np.arange(min(x_data),max(x_data),1))
-        new_y_data=pd.Series(mysigmoid(new_x_data,*popt))
-        new_data=pd.concat([new_x_data,new_y_data],axis=1,ignore_index=True)
-        new_data.columns=["stim_amplitude_pA","frequence_Hz"]
-        #slope_confidence_threshold=5
-        
-        
-        #get index 25% and 75% of max firing rate
-        twentyfive_index=next(x for x, val in enumerate(new_y_data) if val >(0.25*popt[0]))
-        seventyfive_index=next(x for x, val in enumerate(new_y_data) if val >(0.75*popt[0]))
-        #fit linear line to linear sigmoid portion
-        linear_estimated_slope,linear_estimated_intercept=fit_specimen_fi_slope(new_x_data.iloc[twentyfive_index:seventyfive_index],mysigmoid(new_x_data.iloc[twentyfive_index:seventyfive_index],*popt))
-        estimated_threshold=(0-linear_estimated_intercept)/linear_estimated_slope
-        my_derivative=np.array(derivative(mysigmoid,new_x_data,dx=1e-1,args=(popt[0],popt[1],popt[2])))
-       
-        if my_derivative[-1]<0.001:
-            
-            estimated_saturation=popt[0]
-        else:
-            estimated_saturation=np.nan
-        estimated_gain=linear_estimated_slope
-        my_plot=np.nan
-        my_plot=ggplot(f_I_table,aes(x=f_I_table.columns[2],y=f_I_table.columns[3]))+geom_point()+geom_line(new_data,aes(x=new_data.columns[0],y=new_data.columns[1]),color='blue')+geom_abline(aes(intercept=linear_estimated_intercept,slope=linear_estimated_slope))
-        my_plot+=geom_text(x=10,y=estimated_saturation,label="popt2="+str(round(popt[2],2))+
-                              'id='+str(f_I_table.iloc[0,0])
-                              ,size=10,color="black")
-        #print(my_plot)
-
-       
-        return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov,popt
-    except (StopIteration):
-        print("Stopped Iteration")
-
-        estimated_gain=np.nan
-        estimated_saturation=np.nan
-        estimated_threshold=np.nan
-        my_plot=np.nan
-        pcov=np.nan
-        popt=np.nan
-        return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov,popt
-    except (ValueError):
-        print("stopped_valueError")
-
-        estimated_gain=np.nan
-        estimated_saturation=np.nan
-        estimated_threshold=np.nan
-        my_plot=np.nan
-        pcov=np.nan
-        popt=np.nan
-        return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov,popt
-    except (RuntimeError):
-        print("Can't fit sigmoid, least-square optimization failed")
-
-        estimated_gain=np.nan
-        estimated_saturation=np.nan
-        estimated_threshold=np.nan
-        my_plot=np.nan
-        pcov=np.nan
-        popt=np.nan
-        return estimated_gain,estimated_threshold,estimated_saturation,my_plot,pcov,popt
 
 def random_id_list(id_list, n):
     max_value = len(id_list)
@@ -1374,14 +1187,14 @@ def trust_sigmoid(new_x_data,maxi,x0,slope,slope_confidence_threshold):
     
     return True
 
-def extract_inst_freq_table(specimen_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_spike_nb=False,first_nth_spikes=0):
+def extract_inst_freq_table(Cell_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_spike_nb=False,first_nth_spikes=0):
     '''
     Compute the instananous frequency in each interspike interval per sweep for a cell
 
     Parameters
     ----------
-    specimen_id : int
-        specimencell id.
+    Cell_id : int
+        Cellcell id.
     species_sweep_stim_table : DataFrame
         Coming from create_species_sweeps_stim_table function.
 
@@ -1392,61 +1205,61 @@ def extract_inst_freq_table(specimen_id,species_sweep_stim_table,per_time=False,
 
     '''
     index_stim = species_sweep_stim_table.columns.get_loc('Long Square')
-    index_specimen = species_sweep_stim_table.index[species_sweep_stim_table["specimen_id"] == specimen_id][0]
+    index_Cell = species_sweep_stim_table.index[species_sweep_stim_table["specimen_id"] == Cell_id][0]
     
-    my_specimen_data = ctc.get_ephys_data(specimen_id)
-    sweep_numbers = species_sweep_stim_table.iloc[index_specimen, index_stim]
+    my_Cell_data = ctc.get_ephys_data(Cell_id)
+    sweep_numbers = species_sweep_stim_table.iloc[index_Cell, index_stim]
     maximum_nb_interval =0
  
     for current_sweep in sweep_numbers:
         if per_time==True:
-            index_range=my_specimen_data.get_sweep(current_sweep)["index_range"]
-            sampling_rate=my_specimen_data.get_sweep(current_sweep)["sampling_rate"]
-            current_stim_array=(my_specimen_data.get_sweep(current_sweep)["stimulus"][0:index_range[1]+1])* 1e12 #to pA
+            index_range=my_Cell_data.get_sweep(current_sweep)["index_range"]
+            sampling_rate=my_Cell_data.get_sweep(current_sweep)["sampling_rate"]
+            current_stim_array=(my_Cell_data.get_sweep(current_sweep)["stimulus"][0:index_range[1]+1])* 1e12 #to pA
             stim_start_index=index_range[0]+next(x for x, val in enumerate(current_stim_array[index_range[0]:]) if val != 0 )
             current_time_array=np.arange(0, len(current_stim_array)) * (1.0 / sampling_rate)
             stim_start_time=current_time_array[stim_start_index]
             end_time=stim_start_time+(first_x_ms*1e-3)
             
-            spike_times=my_specimen_data.get_spike_times(current_sweep)[my_specimen_data.get_spike_times(current_sweep) <= end_time ]
+            spike_times=my_Cell_data.get_spike_times(current_sweep)[my_Cell_data.get_spike_times(current_sweep) <= end_time ]
             if len(spike_times)>maximum_nb_interval:
                 maximum_nb_interval=len(spike_times)
         elif per_spike_nb==True:
-            spike_times=my_specimen_data.get_spike_times(current_sweep)[:first_nth_spikes]
+            spike_times=my_Cell_data.get_spike_times(current_sweep)[:first_nth_spikes]
             if len(spike_times)>maximum_nb_interval:
                 maximum_nb_interval=len(spike_times)
         else:
-            spike_times=my_specimen_data.get_spike_times(current_sweep)
+            spike_times=my_Cell_data.get_spike_times(current_sweep)
             if len(spike_times)>maximum_nb_interval:
                 maximum_nb_interval=len(spike_times)
        
-    mycolumns=["specimen","sweep","stim_amplitude_pA"]+["interval_"+str(i) for i in range(1,(maximum_nb_interval))]
+    mycolumns=["Cell_id","sweep","stim_amplitude_pA"]+["interval_"+str(i) for i in range(1,(maximum_nb_interval))]
     inst_freq_table=pd.DataFrame(index=np.arange(len(sweep_numbers)),columns=mycolumns)
     for col in range(inst_freq_table.shape[1]):
         inst_freq_table.iloc[:,col]=np.nan
         
     for line in range(len(sweep_numbers)):
         current_sweep=sweep_numbers[line]
-        stim_amplitude=my_specimen_data.get_sweep_metadata(current_sweep)['aibs_stimulus_amplitude_pa']
+        stim_amplitude=my_Cell_data.get_sweep_metadata(current_sweep)['aibs_stimulus_amplitude_pa']
         if per_time==True:
-            index_range=my_specimen_data.get_sweep(current_sweep)["index_range"]
-            sampling_rate=my_specimen_data.get_sweep(current_sweep)["sampling_rate"]
-            current_stim_array=(my_specimen_data.get_sweep(current_sweep)["stimulus"][0:index_range[1]+1])* 1e12 #to pA
+            index_range=my_Cell_data.get_sweep(current_sweep)["index_range"]
+            sampling_rate=my_Cell_data.get_sweep(current_sweep)["sampling_rate"]
+            current_stim_array=(my_Cell_data.get_sweep(current_sweep)["stimulus"][0:index_range[1]+1])* 1e12 #to pA
             stim_start_index=index_range[0]+next(x for x, val in enumerate(current_stim_array[index_range[0]:]) if val != 0 )
             current_time_array=np.arange(0, len(current_stim_array)) * (1.0 / sampling_rate)
             stim_start_time=current_time_array[stim_start_index]
             end_time=stim_start_time+(first_x_ms*1e-3)
             
-            spike_times=my_specimen_data.get_spike_times(current_sweep)[my_specimen_data.get_spike_times(current_sweep) <= end_time ]
+            spike_times=my_Cell_data.get_spike_times(current_sweep)[my_Cell_data.get_spike_times(current_sweep) <= end_time ]
            
         elif per_spike_nb==True:
-            spike_times=my_specimen_data.get_spike_times(current_sweep)[:first_nth_spikes]
+            spike_times=my_Cell_data.get_spike_times(current_sweep)[:first_nth_spikes]
             
         else:
-            spike_times=my_specimen_data.get_spike_times(current_sweep)
+            spike_times=my_Cell_data.get_spike_times(current_sweep)
             
         
-        inst_freq_table.iloc[line,0]=specimen_id
+        inst_freq_table.iloc[line,0]=Cell_id
         inst_freq_table.iloc[line,1]=current_sweep   
         inst_freq_table.iloc[line,2]=stim_amplitude
         # Put a minimum number of spikes to compute adaptation
@@ -1457,8 +1270,8 @@ def extract_inst_freq_table(specimen_id,species_sweep_stim_table,per_time=False,
                 inst_freq_table.iloc[line,(current_spike_time_index+2)]=current_inst_frequency
         
             inst_freq_table.iloc[line,3:]/=inst_freq_table.iloc[line,3]
-    inst_freq_table = inst_freq_table.sort_values(by=["specimen", 'stim_amplitude_pA'])
-    inst_freq_table['specimen']=pd.Categorical(inst_freq_table['specimen'])
+    inst_freq_table = inst_freq_table.sort_values(by=["Cell_id", 'stim_amplitude_pA'])
+    inst_freq_table['Cell_id']=pd.Categorical(inst_freq_table['Cell_id'])
     
     interval_freq_table=pd.DataFrame(columns=['interval','inst_frequency','stimulus_amplitude'])
     isnull_table=inst_freq_table.isnull()
@@ -1469,10 +1282,10 @@ def extract_inst_freq_table(specimen_id,species_sweep_stim_table,per_time=False,
                                    index=['interval','inst_frequency','stimulus_amplitude'])
                 interval_freq_table=interval_freq_table.append(new_line,ignore_index=True)
    
-    specimen=pd.Series(np.array([inst_freq_table.iloc[0,0]]*interval_freq_table.shape[0]))
-    interval_freq_table=pd.concat([specimen,interval_freq_table],axis=1)
-    interval_freq_table.columns=["specimen",'interval','inst_frequency','stimulus_amplitude']
-    interval_freq_table['specimen']=pd.Categorical(interval_freq_table['specimen'])
+    Cell=pd.Series(np.array([inst_freq_table.iloc[0,0]]*interval_freq_table.shape[0]))
+    interval_freq_table=pd.concat([Cell,interval_freq_table],axis=1)
+    interval_freq_table.columns=["Cell_id",'interval','inst_frequency','stimulus_amplitude']
+    interval_freq_table['Cell_id']=pd.Categorical(interval_freq_table['Cell_id'])
 
     return interval_freq_table
     # return(inst_freq_table)
@@ -1501,10 +1314,10 @@ def table_to_fit(inst_freq_table):
                                    index=['interval','inst_frequency','stimulus_amplitude'])
                 interval_freq_table=interval_freq_table.append(new_line,ignore_index=True)
    
-    specimen=pd.Series(np.array([inst_freq_table.iloc[0,0]]*interval_freq_table.shape[0]))
-    interval_freq_table=pd.concat([specimen,interval_freq_table],axis=1)
-    interval_freq_table.columns=["specimen",'interval','inst_frequency','stimulus_amplitude']
-    interval_freq_table['specimen']=pd.Categorical(interval_freq_table['specimen'])
+    Cell=pd.Series(np.array([inst_freq_table.iloc[0,0]]*interval_freq_table.shape[0]))
+    interval_freq_table=pd.concat([Cell,interval_freq_table],axis=1)
+    interval_freq_table.columns=["Cell_id",'interval','inst_frequency','stimulus_amplitude']
+    interval_freq_table['Cell_id']=pd.Categorical(interval_freq_table['Cell_id'])
 
     return interval_freq_table
 
@@ -1832,266 +1645,6 @@ def plot_results_brute(result, best_vals=True, varlabels=None,
         plt.savefig(output)
 
 
-def fit_exponential_decay(cell_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_spike_nb=False,first_nth_spike=0,do_plot=False):
-    '''
-    Parameters
-    ----------
-    interval_freq_table : DataFrame
-        Comming from table_to_fit function.
-
-    Returns
-    -------
-    my_plot : ggplot
-        
-    starting_freq : flt
-        estimated initial instantanous frequency.
-    adapt_cst : flt
-        Adaptation index constant.
-    limit_freq : flt
-        intantaneous frequency limit.
-    pcov_overall : 2-D array
-        The estimated covariance of popt
-
-    '''
-    
-    try:
-        if type(cell_id)!=np.float64:
-            str_cell_id=str(cell_id)
-            cell_id=np.float64(cell_id)
-        else:
-            str_cell_id=str(cell_id)
-        interval_freq_table=extract_inst_freq_table(cell_id,species_sweep_stim_table,per_time=per_time,first_x_ms=first_x_ms,per_spike_nb=per_spike_nb,first_nth_spikes=first_nth_spike)
-        x_data=interval_freq_table.iloc[:,1]
-        y_data=interval_freq_table.iloc[:,2]
-        initial_steady_state=np.mean(interval_freq_table[interval_freq_table['interval']==max(interval_freq_table['interval'])]['inst_frequency'])
-        median_table=interval_freq_table.groupby(by=["interval"],dropna=True).median()
-        median_table["count_weights"]=pd.DataFrame(interval_freq_table.groupby(by=["interval"],dropna=True).count()).iloc[:,-1]
-        median_table["interval"]=np.arange(1,(median_table.shape[0]+1))
-        median_table["interval"]=np.float64(median_table["interval"])      
-        
-        exponential_model=ExponentialModel(prefix="expo_")
-        expo_params=exponential_model.make_params()
-        expo_params["expo_amplitude"].set(value=-1)
-        expo_params["expo_decay"].set(value=15)
-        
-        constant_model=ConstantModel(prefix="const_")
-        expo_params.update(constant_model.make_params())
-        expo_params["const_c"].set(value=initial_steady_state,min=0,expr='1-expo_amplitude')
-        
-        full_expo_model=exponential_model+constant_model
-        full_expo_out=full_expo_model.fit(median_table["inst_frequency"],expo_params,x=median_table["interval"],weights=median_table["count_weights"])
-        
-        A=full_expo_out.best_values["expo_amplitude"]
-        B=full_expo_out.best_values["expo_decay"]
-        C=full_expo_out.best_values["const_c"]
-        A_norm=A/(A+C)
-        C_norm=C/(A+C)
-        interval_range=np.arange(1,max(median_table["interval"])+1,1)
-
-        simulation=my_exponential_decay(interval_range,A,B,C)
-        norm_simulation=my_exponential_decay(interval_range,A_norm,B,C_norm)
-        sim_table=pd.DataFrame(np.column_stack((interval_range,simulation)),columns=["Interval","Normalized_freq"])
-        norm_sim_table=pd.DataFrame(np.column_stack((interval_range,norm_simulation)),columns=["Interval","Normalized_freq"])
-        
-        print('chi_square=',full_expo_out.chisqr)
-        
-        my_plot=np.nan
-        if do_plot==True:
-            my_plot=ggplot(interval_freq_table,aes(x=interval_freq_table["interval"],y=interval_freq_table["inst_frequency"]))+geom_point(aes(color=interval_freq_table["stimulus_amplitude"]))
-            
-            my_plot=my_plot+geom_point(median_table,aes(x='interval',y='inst_frequency',size=median_table["count_weights"]),shape='s',color='red')
-            my_plot=my_plot+geom_line(sim_table,aes(x='Interval',y='Normalized_freq'),color='black')
-            my_plot=my_plot+geom_line(norm_sim_table,aes(x='Interval',y='Normalized_freq'),color="green")
-            my_plot+=xlab(str("ISI index; cell_id: "+str_cell_id))
-            print(my_plot)
-        return A,B,C,my_plot
-    except (StopIteration):
-        print("Stopped Iteration")
-        my_plot=np.nan
-        A=np.nan
-        B=np.nan
-        C=np.nan
-        return A,B,C,my_plot
-    except (ValueError):
-        print("stopped_valueError")
-        my_plot=np.nan
-        A=np.nan
-        B=np.nan
-        C=np.nan
-        return A,B,C,my_plot
-    except(RuntimeError):
-        print("Can't fit exponential, least-square optimization failed")
-        my_plot=np.nan
-        A=np.nan
-        B=np.nan
-        C=np.nan
-        return A,B,C,my_plot
-    except(TypeError):
-        print("Stopped TypeError")
-        my_plot=np.nan
-        A=np.nan
-        B=np.nan
-        C=np.nan
-        return A,B,C,my_plot
-
-
-def fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0,do_plot=False):
-    try:
-         if type(cell_id)!=np.float64:
-             str_cell_id=str(cell_id)
-             cell_id=np.float64(cell_id)
-         else:
-             str_cell_id=str(cell_id)
-         # extract f_I table for the specimen
-         f_I_table=extract_stim_freq(float(cell_id), species_sweep_stim_table,per_time=per_time,first_x_ms=first_x_ms,per_nth_spike=per_nth_spike,first_nth_spike=first_nth_spike)
-         x_data=f_I_table.iloc[:,2]
-         y_data=f_I_table.iloc[:,3]
-         
-         #get initial estimate of parameters
-         without_zero_index=next(x for x, val in enumerate(y_data) if val >0 )
-         last_zero_index=without_zero_index-1
-         median_firing_rate_index=next(x for x, val in enumerate(y_data) if val >= np.median(y_data.iloc[without_zero_index:]))
-         #Get the stimulus amplitude correspondingto the median non-zero firing rate
-         x0=x_data.iloc[median_firing_rate_index]
-         #Get the slope from the linear fit of the firing rate
-         slope,intercept=fit_specimen_fi_slope(x_data,y_data)
-         last_zero_x=x_data.iloc[last_zero_index]
-         first_non_zero_x=x_data.iloc[without_zero_index]
-         Q3_index=next(x for x, val in enumerate(y_data) if val >0.75*max(y_data) )
-         Q3=y_data.iloc[Q3_index]
-         Q1_index=next(x for x, val in enumerate(y_data) if val >0.25*max(y_data) )
-         Q1=y_data.iloc[Q1_index]
-         # Define sigmoid function model
-         sigmoid_mod=StepModel(form='logistic',prefix='sigmoid_')
-         
-
-         #params=sigmoid_mod.guess(y_data,x=x_data,center=x0)
-         params=sigmoid_mod.make_params()
-         params['sigmoid_amplitude'].set(value=max(y_data),min=0.1)
-         params['sigmoid_center'].set(value=x0,min=last_zero_x)
-         params['sigmoid_sigma'].set(value=100,min=0)
-         out=sigmoid_mod.fit(y_data,params,x=x_data)
-         general_table=pd.DataFrame(np.column_stack((x_data,y_data)),columns=["Stim_amp_pA","Frequency"])
-         
-         #Get parameters best estimations
-         amplitude=out.best_values['sigmoid_amplitude']
-         center=out.best_values['sigmoid_center']
-         sigma=out.best_values['sigmoid_sigma']
-
-        
-         #Create more continuous x_data in the same range, compute corresponding y_data according to computed parameters
-         new_x_data=pd.Series(np.arange(min(x_data),max(x_data),1))
-         NRMSE_sigmoid=mean_squared_error(y_data, sigmoid_function(x_data,amplitude,center,sigma),squared=(False))/(Q3-Q1)
-
-         
-         
-         #Make composite model fit by multipying the sigmoid with a step function
-         new_sigmoid_model=StepModel(form='logistic',prefix='new_sigmoid_')
-         new_sigmoid_params=new_sigmoid_model.make_params()
-         new_sigmoid_params['new_sigmoid_amplitude'].set(value=max(y_data),min=max(y_data))
-         new_sigmoid_params['new_sigmoid_center'].set(value=first_non_zero_x,min=first_non_zero_x)
-         new_sigmoid_params['new_sigmoid_sigma'].set(value=100,min=0.0)     
-
-         step_mod=StepModel(form='logistic',prefix="step_")
-         new_sigmoid_params.update(step_mod.make_params())
-         new_sigmoid_params['step_amplitude'].set(value=1,vary=False)
-         new_sigmoid_params['step_center'].set(value=first_non_zero_x)
-         new_sigmoid_params['step_sigma'].set(value=0.0001,vary=False) 
-         
-         compo_model=new_sigmoid_model*step_mod
-         compo_out=compo_model.fit(y_data,new_sigmoid_params,x=x_data)
-         # Get parameters best estimations
-         new_sigmoid_amplitude=compo_out.best_values['new_sigmoid_amplitude']
-         new_sigmoid_center=compo_out.best_values['new_sigmoid_center']
-         new_sigmoid_sigma=compo_out.best_values['new_sigmoid_sigma']
-         step_jump_x=compo_out.best_values['step_center']
-         step_amplitude=1
-         NRMSE_composite=mean_squared_error(y_data,pd.Series(compo(x_data,step_jump_x,step_amplitude,new_sigmoid_amplitude,new_sigmoid_center,new_sigmoid_sigma)),squared=False )/(Q3-Q1)
-       
-         if NRMSE_composite<=NRMSE_sigmoid:
-             # in case where step function + sigmoid function fits better (Type II)
-             computed_y_data=pd.Series(compo(x_data,step_jump_x,step_amplitude,new_sigmoid_amplitude,new_sigmoid_center,new_sigmoid_sigma))
-            
-             #get index 25% and 75% of max firing rate
-
-             twentyfive_index=next(x for x, val in enumerate(computed_y_data) if val >(0.25*max(computed_y_data)))
-             seventyfive_index=next(x for x, val in enumerate(computed_y_data) if val >(0.75*max(computed_y_data)))
-             #fit linear line to linear sigmoid portion
-             estimated_slope,estimated_intercept=fit_specimen_fi_slope(new_x_data.iloc[twentyfive_index:seventyfive_index],compo(new_x_data.iloc[twentyfive_index:seventyfive_index],step_jump_x,step_amplitude,new_sigmoid_amplitude,new_sigmoid_center,new_sigmoid_sigma))
-             estimated_threshold=step_jump_x
-             my_derivative=np.array(derivative(compo,new_x_data,dx=1e-1,args=(step_jump_x,step_amplitude,new_sigmoid_amplitude,new_sigmoid_center,new_sigmoid_sigma)))
-             end_slope=np.mean(my_derivative[-10:])
-             parameter_amplitude=new_sigmoid_amplitude
-             parameter_center=new_sigmoid_center
-             parameter_sigma=new_sigmoid_sigma
-             if end_slope <=0.001:
-                 estimated_saturation=np.mean(computed_y_data[-10:])
-
-             else:
-                 estimated_saturation=np.nan
-             
-             color_plot='green'
-             Neuron_type='Type_II'
-             linetype_composite='solid'
-             linetype_sigmoid="dashed"
-         else:
-             # In case where simple sigmoid fits better (Type I)
-             computed_y_data=sigmoid_function(new_x_data, amplitude, center, sigma)
-             
-             twentyfive_index=next(x for x, val in enumerate(computed_y_data) if val >(0.25*max(computed_y_data)))
-             seventyfive_index=next(x for x, val in enumerate(computed_y_data) if val >(0.75*max(computed_y_data)))
-             #fit linear line to linear sigmoid portion
-             estimated_slope,estimated_intercept=fit_specimen_fi_slope(new_x_data.iloc[twentyfive_index:seventyfive_index],sigmoid_function(new_x_data.iloc[twentyfive_index:seventyfive_index],amplitude,center,sigma))
-             estimated_threshold=(0-estimated_intercept)/estimated_slope
-             my_derivative=np.array(derivative(sigmoid_function,new_x_data,dx=1e-1,args=(amplitude,center,sigma)))
-             end_slope=np.mean(my_derivative[-10:])
-             parameter_amplitude=amplitude
-             parameter_center=center
-             parameter_sigma=sigma
-             if end_slope <=0.001:
-                 estimated_saturation=np.mean(computed_y_data[-10:])
-
-             else:
-                 estimated_saturation=np.nan
-             Neuron_type='Type_I'
-             color_plot='blue'
-             linetype_composite='dashed'
-             linetype_sigmoid="solid"
-         #if you want to see both curve (incompatible with do_plot=True)
-         # computed_y_data=pd.Series(compo(new_x_data,step_jump_x,new_sigmoid_amplitude,new_sigmoid_center,new_sigmoid_sigma))
-         # secondcomputed_y_data=sigmoid_function(new_x_data, amplitude, center, sigma)
-         # my_model_table=pd.DataFrame(np.column_stack((new_x_data,computed_y_data)),columns=["Stim_amp_pA","Frequency"])
-         # my_second_model_table=pd.DataFrame(np.column_stack((new_x_data,secondcomputed_y_data)),columns=["Stim_amp_pA","Frequency"])
-         # my_new_plot=ggplot(general_table,aes(x=general_table["Stim_amp_pA"],y=general_table["Frequency"]))+geom_point()
-         # my_new_plot+=geom_line(my_model_table,aes(x=my_model_table["Stim_amp_pA"],y=my_model_table['Frequency']),color='green',linetype=linetype_composite)
-         # my_new_plot+=geom_line(my_second_model_table,aes(x=my_second_model_table["Stim_amp_pA"],y=my_second_model_table['Frequency']),color='blue',linetype=linetype_sigmoid)
-         # my_new_plot+=xlab(str("Stim_amp_pA_id: "+str_cell_id))
-         # print(my_new_plot)
-         my_plot=np.nan
-         if do_plot == True:
-             model_table=pd.DataFrame(np.column_stack((new_x_data,computed_y_data)),columns=["Stim_amp_pA","Frequency"])
-             my_plot=ggplot(general_table,aes(x=general_table["Stim_amp_pA"],y=general_table["Frequency"]))+geom_point()
-             my_plot+=geom_line(model_table,aes(x=model_table["Stim_amp_pA"],y=model_table['Frequency']),color=color_plot)
-             my_plot+=geom_abline(aes(intercept=estimated_intercept,slope=estimated_slope))
-             my_plot+=xlab(str("Stim_amp_pA_id: "+str_cell_id))
-             print(my_plot)
-             
-         
-         #return (amplitude,center,sigma,end_slope,NRMSE_sigmoid,NRMSE_composite,step_jump_x,new_sigmoid_amplitude,new_sigmoid_center,new_sigmoid_sigma)
-         return estimated_slope,estimated_threshold,estimated_saturation,Neuron_type,my_plot,NRMSE_sigmoid,NRMSE_composite,parameter_amplitude,parameter_center,parameter_sigma
-    except(StopIteration):
-         print("Stop Iteration")
-         #return(np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
-         return np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan
-    except (ValueError):
-         print("stopped_valueError")
-         #return(np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
-         return np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan
-        
-    except (RuntimeError):
-         print("Can't fit sigmoid, least-square optimization failed")
-         #return(np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
-         return np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan
     
 def sigmoid_to_minimize(params,x_data,data):
     sigmoid_amplitude=params['sigmoid_amplitude']
@@ -2113,255 +1666,11 @@ def single_sigmoid_to_minimize(params,x_data,data):
 
     return model-data
 
-def new_fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0,do_plot=False):
-    try:
 
-         
-         if type(cell_id)!=np.float64:
-             str_cell_id=str(cell_id)
-             cell_id=np.float64(cell_id)
-         else:
-             str_cell_id=str(cell_id)
-         # extract f_I table for the specimen and use only the "coarse" annotated sweeps
-         f_I_table=extract_stim_freq(float(cell_id), species_sweep_stim_table,per_time=per_time,first_x_ms=first_x_ms,per_nth_spike=per_nth_spike,first_nth_spike=first_nth_spike)
-         coarse_f_I_table=f_I_table[f_I_table['stimulus_description']=='COARSE']
-         if max(coarse_f_I_table.loc[:,'Frequency_Hz'])==0:
-             fit='No_COARSE_Response'
-             return (fit,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
-         x_data=coarse_f_I_table.loc[:,'Stim_amp_pA']
-         y_data=coarse_f_I_table.loc[:,"Frequency_Hz"]
-         
-         #get initial estimate of parameters for single sigmoid fit
-         without_zero_index=next(x for x, val in enumerate(y_data) if val >0 )
-
-         
-         median_firing_rate_index=next(x for x, val in enumerate(y_data) if val >= np.median(y_data.iloc[without_zero_index:]))
-         #Get the stimulus amplitude correspondingto the median non-zero firing rate
-         x0=x_data.iloc[median_firing_rate_index]
-         #Get the slope from the linear fit of the firing rate
-         slope,intercept=fit_specimen_fi_slope(x_data,y_data)
-         
-         first_non_zero_x=x_data.iloc[without_zero_index]
-         new_x_data=pd.Series(np.arange(min(x_data),max(x_data),1))
-         first_non_zero_extended_x_index=next(x for x, val in enumerate(new_x_data) if val >=first_non_zero_x )
-         best_single_amplitude=np.nan
-         best_single_center=np.nan
-         best_single_sigma=np.nan
-         best_compo_QNRMSE=None
-         best_step_amplitude=np.nan
-         best_step_center=np.nan
-         best_step_sigma=np.nan
-         best_sigmoid_amplitude=np.nan
-         best_sigmoid_center=np.nan
-         best_sigmoid_sigma=np.nan
-
-         ##First, try to fit a single sigmoid
-         params_single_sigmoid=Parameters()
-         params_single_sigmoid.add('single_sigmoid_amplitude',value=max(y_data),min=0)
-         params_single_sigmoid.add('single_sigmoid_center',value=x0)
-         params_single_sigmoid.add('single_sigmoid_sigma',value=500,min=0.1)
-         params_single_sigmoid['single_sigmoid_amplitude'].set(brute_step=20)
-         params_single_sigmoid['single_sigmoid_center'].set(brute_step=21)
-         params_single_sigmoid['single_sigmoid_sigma'].set(brute_step=31)
-
-         single_sigmoid_fitter=Minimizer(single_sigmoid_to_minimize,params_single_sigmoid,fcn_args=(x_data,y_data))
-
-         single_result_brute=single_sigmoid_fitter.minimize(method='brute',Ns=10,keep=10)
-
-         best_single_QNRMSE=None
-         fit='Rejected'
-         typeII_tested=False
-         #plot_results_brute(single_result_brute,best_vals=True,varlabels=None)
-         for current_single_result in single_result_brute.candidates:
-
-             current_single_sigmoid_amplitude=current_single_result.params["single_sigmoid_amplitude"].value
-             current_single_sigmoid_center=current_single_result.params["single_sigmoid_center"].value
-             current_single_sigmoid_sigma=current_single_result.params["single_sigmoid_sigma"].value
-
-             single_sigmoid_mod=StepModel(form='logistic',prefix='single_sigmoid_')
-             single_sigmoid_mod_params=single_sigmoid_mod.make_params()
-             single_sigmoid_mod_params['single_sigmoid_amplitude'].set(value=current_single_sigmoid_amplitude)
-             single_sigmoid_mod_params['single_sigmoid_center'].set(value=current_single_sigmoid_center)
-             single_sigmoid_mod_params['single_sigmoid_sigma'].set(value=current_single_sigmoid_sigma)
-             
-             single_sigmoid_out=single_sigmoid_mod.fit(y_data,single_sigmoid_mod_params,x=x_data)
-             current_best_single_sigmoid_amplitude=single_sigmoid_out.best_values['single_sigmoid_amplitude']
-             current_best_single_sigmoid_center=single_sigmoid_out.best_values['single_sigmoid_center']
-             current_best_single_sigmoid_sigma=single_sigmoid_out.best_values['single_sigmoid_sigma']
-             true=y_data.iloc[without_zero_index:]
-             pred=pd.Series(sigmoid_function(x_data.iloc[without_zero_index:],current_best_single_sigmoid_amplitude,
-                                                                                    current_best_single_sigmoid_center,
-                                                                                    current_best_single_sigmoid_sigma))
-             pred_extended=pd.Series(sigmoid_function(new_x_data.loc[first_non_zero_extended_x_index:],current_best_single_sigmoid_amplitude,
-                                                                                    current_best_single_sigmoid_center,
-                                                                                    current_best_single_sigmoid_sigma))
-
-             if best_single_QNRMSE==None or best_single_QNRMSE>normalized_root_mean_squared_error(true,pred,pred_extended):
-                 
-                 best_single_amplitude=current_best_single_sigmoid_amplitude
-                 best_single_center=current_best_single_sigmoid_center
-                 best_single_sigma=current_best_single_sigmoid_sigma
-                 true=y_data.iloc[without_zero_index:]
-                 pred=pd.Series(sigmoid_function(x_data.iloc[without_zero_index:],current_best_single_sigmoid_amplitude,
-                                                                                        current_best_single_sigmoid_center,
-                                                                                        current_best_single_sigmoid_sigma))
-                 pred_extended=pd.Series(sigmoid_function(new_x_data.loc[first_non_zero_extended_x_index:],current_best_single_sigmoid_amplitude,
-                                                                                        current_best_single_sigmoid_center,
-                                                                                        current_best_single_sigmoid_sigma))
-
-                 best_single_QNRMSE=normalized_root_mean_squared_error(true,pred,pred_extended)
-
-        
-         single_sigmoid_y_data=pd.Series(sigmoid_function(new_x_data,best_single_amplitude,
-                                                                                best_single_center,
-                                                                                best_single_sigma))
-
-
-
-         if best_single_QNRMSE<0.5:
-             fit='TypeI'
-         ##Define condition to test double sigmoid fit
-         if best_single_QNRMSE<1e-3 or best_single_QNRMSE>0.5 or best_single_sigma<1:
-
-             params=Parameters()
-             params.add('sigmoid_amplitude',value=max(y_data),min=0)
-             params.add('sigmoid_center',value=x0)
-             params.add("sigmoid_sigma",value=500,min=0.1)
-             params.add('step_amplitude',value=1,vary=False)
-             params.add('step_center',value=first_non_zero_x,min=0)
-
-             
-             params['sigmoid_amplitude'].set(brute_step=80)
-             params["sigmoid_center"].set(brute_step=60)
-             params["sigmoid_sigma"].set(brute_step=120)
-             params['step_amplitude'].set(brute_step=0.1)
-             params['step_center'].set(brute_step=(max(x_data//9)))
-
-
-             fitter=Minimizer(sigmoid_to_minimize,params,fcn_args=(x_data,y_data))
-
-             result_brute=fitter.minimize(method='brute',Ns=15,keep=15)
-             
-            
-    
-    
-             for current_results in result_brute.candidates:
-                  current_sigmoid_amplitude=current_results.params['sigmoid_amplitude'].value
-                  current_sigmoid_center=current_results.params['sigmoid_center'].value
-                  current_sigmoid_sigma=current_results.params['sigmoid_sigma'].value
-                  current_step_amplitude=current_results.params['step_amplitude'].value
-                  current_step_center=current_results.params['step_center'].value
-                 
-                  new_sigmoid_model=StepModel(form='logistic',prefix='sigmoid_')
-                  new_sigmoid_params=new_sigmoid_model.make_params()
-                  new_sigmoid_params['sigmoid_amplitude'].set(value=current_sigmoid_amplitude)
-                  new_sigmoid_params['sigmoid_center'].set(value=current_sigmoid_center)
-                  new_sigmoid_params['sigmoid_sigma'].set(value=current_sigmoid_sigma)     
-                 
-                  step_mod=StepModel(form='logistic',prefix="step_")
-                  new_sigmoid_params.update(step_mod.make_params())
-                  new_sigmoid_params['step_amplitude'].set(value=current_step_amplitude)
-                  new_sigmoid_params['step_center'].set(value=current_step_center)
-                  new_sigmoid_params['step_sigma'].set(value=0.00001,vary=False) 
-                 
-                  compo_model=new_sigmoid_model*step_mod
-    
-                  compo_out=compo_model.fit(y_data,new_sigmoid_params,x=x_data)
-    
-                  # Get parameters best estimations
-                  new_sigmoid_amplitude=compo_out.best_values['sigmoid_amplitude']
-                  new_sigmoid_center=compo_out.best_values['sigmoid_center']
-                  new_sigmoid_sigma=compo_out.best_values['sigmoid_sigma']
-                  true=y_data.iloc[without_zero_index:]
-                  pred=pd.Series(compo(x_data.iloc[without_zero_index:],compo_out.best_values['step_center'],compo_out.best_values['step_amplitude'],compo_out.best_values["sigmoid_amplitude"],compo_out.best_values["sigmoid_center"],compo_out.best_values["sigmoid_sigma"]))
-                  pred_extended=pd.Series(compo(new_x_data.loc[first_non_zero_extended_x_index:],compo_out.best_values['step_center'],compo_out.best_values['step_amplitude'],compo_out.best_values["sigmoid_amplitude"],compo_out.best_values["sigmoid_center"],compo_out.best_values["sigmoid_sigma"]))
-                 
-
-                  if best_compo_QNRMSE==None or best_compo_QNRMSE>normalized_root_mean_squared_error(true,pred,pred_extended):
-                     
-                      true=y_data.iloc[without_zero_index:]
-                      pred=pd.Series(compo(x_data.iloc[without_zero_index:],compo_out.best_values['step_center'],compo_out.best_values['step_amplitude'],compo_out.best_values["sigmoid_amplitude"],compo_out.best_values["sigmoid_center"],compo_out.best_values["sigmoid_sigma"]))
-                      pred_extended=pd.Series(compo(new_x_data.loc[first_non_zero_extended_x_index:],compo_out.best_values['step_center'],compo_out.best_values['step_amplitude'],compo_out.best_values["sigmoid_amplitude"],compo_out.best_values["sigmoid_center"],compo_out.best_values["sigmoid_sigma"]))
-                      best_compo_QNRMSE=normalized_root_mean_squared_error(true,pred,pred_extended)
-                      
-                      best_sigmoid_amplitude=compo_out.best_values["sigmoid_amplitude"]
-                      best_sigmoid_center=compo_out.best_values["sigmoid_center"]
-                      best_sigmoid_sigma=compo_out.best_values["sigmoid_sigma"]
-                     
-                      best_step_amplitude=compo_out.best_values['step_amplitude']
-                      best_step_center=compo_out.best_values['step_center']
-                      best_step_sigma=compo_out.best_values['step_sigma']
-                      
-             
-             computed_y_data=pd.Series(compo(new_x_data,best_step_center,best_step_amplitude,best_sigmoid_amplitude,best_sigmoid_center,best_sigmoid_sigma))
-             model_table=pd.DataFrame(np.column_stack((new_x_data,computed_y_data)),columns=["Stim_amp_pA","Frequency_Hz"])
-             typeII_tested=True
-
-             if 2*best_compo_QNRMSE<=best_single_QNRMSE and best_compo_QNRMSE<0.1 and best_compo_QNRMSE>1e-4:
-                 fit= 'TypeII'
-             elif best_single_QNRMSE<0.5 and best_single_sigma>1:
-                 fit='TypeI'
-             else:
-                 fit='Rejected'
-                 
-         color_dict={"COARSE":"green",
-                     "FINEST":'red'}
-
-         if best_compo_QNRMSE==None:
-             best_compo_QNRMSE=np.nan
-
-         
-
-         if do_plot == True:
-              single_sigmoid_table=pd.DataFrame(np.column_stack((new_x_data,single_sigmoid_y_data)),columns=["Stim_amp_pA","Frequency_Hz"])
-              my_plot=ggplot(f_I_table,aes(x=f_I_table["Stim_amp_pA"],y=f_I_table["Frequency_Hz"],color=f_I_table["stimulus_description"]))+geom_point()+scale_color_manual(values=color_dict)
-              if fit=='TypeII':
-                   compo_line='solid'
-                   single_line='dashed'
-                   my_plot+=geom_line(model_table,aes(x=model_table["Stim_amp_pA"],y=model_table['Frequency_Hz']),color='red',linetype=compo_line)
-              elif fit=='TypeI':
-                   compo_line='dashed'
-                   single_line='solid'
-
-                   if typeII_tested==True:
-                       print('jijij')
-                       my_plot+=geom_line(model_table,aes(x=model_table["Stim_amp_pA"],y=model_table['Frequency_Hz']),color='red',linetype=compo_line)
-
-              else:
-                  single_line="dashed"
-              
-              my_plot+=geom_line(single_sigmoid_table,aes(x=single_sigmoid_table["Stim_amp_pA"],y=single_sigmoid_table['Frequency_Hz']),color='blue',linetype=single_line)
-
-              my_plot+=xlab(str("Stim_amp_pA_id: "+str_cell_id))
-              print(my_plot)
-              
-         end_time=time.time()
-         
-         #print("Total time= ",end_time-start_time,"s ; Time compo brute=",time_1-start_time,"s ; Time single brute=",time_2-time_1)
-         return fit,best_single_QNRMSE,best_single_amplitude,best_single_center,best_single_sigma,best_compo_QNRMSE,best_step_amplitude,best_step_center,best_step_sigma,best_sigmoid_amplitude,best_sigmoid_center,best_sigmoid_sigma
-         
-    except(StopIteration):
-         print("Stop Iteration")
-         return("Failed",np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
-         
-    except (ValueError):
-         print("stopped_valueError")
-         
-         return("Failed",np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
-        
-    except (RuntimeError):
-         print("Can't fit sigmoid, least-square optimization failed")
-        
-         return('Failed',np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
-    except (TypeError):
-         print("Stop Type Error")
-         return('Failed',np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
-     
-        
  
 def heaviside_fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0,do_plot=False):
     try:
-
+        
          
          if type(cell_id)!=np.float64:
              str_cell_id=str(cell_id)
@@ -2369,13 +1678,13 @@ def heaviside_fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first
          else:
              str_cell_id=str(cell_id)
          # extract f_I table for the specimen and use only the "coarse" annotated sweeps
-         f_I_table=extract_stim_freq(float(cell_id), species_sweep_stim_table,per_time=per_time,first_x_ms=first_x_ms,per_nth_spike=per_nth_spike,first_nth_spike=first_nth_spike)
-         coarse_f_I_table=f_I_table[f_I_table['stimulus_description']=='COARSE']
-         if max(coarse_f_I_table.loc[:,'Frequency_Hz'])==0:
-             fit='No_COARSE_Response'
+         f_I_table,do_fit=extract_stim_freq(float(cell_id), species_sweep_stim_table,per_time=per_time,first_x_ms=first_x_ms,per_nth_spike=per_nth_spike,first_nth_spike=first_nth_spike)
+         
+         if do_fit ==False:
+             fit='Not_enough_data'
              return (fit,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
-         x_data=coarse_f_I_table.loc[:,'Stim_amp_pA']
-         y_data=coarse_f_I_table.loc[:,"Frequency_Hz"]
+         x_data=f_I_table.loc[:,'Stim_amp_pA']
+         y_data=f_I_table.loc[:,"Frequency_Hz"]
          
          #get initial estimate of parameters for single sigmoid fit
          without_zero_index=next(x for x, val in enumerate(y_data) if val >0 )
@@ -2400,6 +1709,7 @@ def heaviside_fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first
          best_sigmoid_amplitude=np.nan
          best_sigmoid_center=np.nan
          best_sigmoid_sigma=np.nan
+         best_heaviside_step=np.nan
 
          ##First, try to fit a single sigmoid
          params_single_sigmoid=Parameters()
@@ -2468,7 +1778,8 @@ def heaviside_fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first
          if best_single_QNRMSE<0.5:
              fit='TypeI'
              
-
+         color_dict={"COARSE":"green",
+                     "FINEST":'red'}
          ##Define condition to test double sigmoid fit
          if best_single_QNRMSE<1e-3 or best_single_QNRMSE>0.5 or best_single_sigma<1:
 
@@ -2557,7 +1868,7 @@ def heaviside_fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first
 
          if do_plot == True:
               single_sigmoid_table=pd.DataFrame(np.column_stack((new_x_data,single_sigmoid_y_data)),columns=["Stim_amp_pA","Frequency_Hz"])
-              my_plot=ggplot(f_I_table,aes(x=f_I_table["Stim_amp_pA"],y=f_I_table["Frequency_Hz"],color=f_I_table["stimulus_description"]))+geom_point()+scale_color_manual(values=color_dict)
+              my_plot=ggplot(f_I_table,aes(x=f_I_table["Stim_amp_pA"],y=f_I_table["Frequency_Hz"]))+geom_point()
               
               if fit=='TypeII':
                    compo_line='solid'
@@ -2579,27 +1890,27 @@ def heaviside_fit_sigmoid (cell_id,species_sweep_stim_table,per_time=False,first
               my_plot+=xlab(str("Stim_amp_pA_id: "+str_cell_id))
               print(my_plot)
               
-         end_time=time.time()
+
          
         
          return fit,best_single_QNRMSE,best_single_amplitude,best_single_center,best_single_sigma,best_compo_QNRMSE,best_heaviside_step,best_sigmoid_amplitude,best_sigmoid_center,best_sigmoid_sigma
          
     except(StopIteration):
          print("Stop Iteration")
-         return("Failed",np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+         return("Failed",np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
          
     except (ValueError):
          print("stopped_valueError")
          
-         return("Failed",np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+         return("Failed",np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
         
     except (RuntimeError):
          print("Can't fit sigmoid, least-square optimization failed")
         
-         return('Failed',np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+         return("Failed",np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
     except (TypeError):
          print("Stop Type Error")
-         return('Failed',np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
+         return("Failed",np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan,np.nan)
      
 
 def heaviside_compute_f_I_params(fit_table,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0,do_plot=False):
@@ -2696,100 +2007,6 @@ def heaviside_compute_f_I_params(fit_table,species_sweep_stim_table,per_time=Fal
 
 
 
-def compute_f_I_params(fit_table,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0,do_plot=False):
-    mycol=["Cell_id","Fit","Gain","Threshold","Saturation"]
-    f_I_params_table=pd.DataFrame(columns=mycol)
-    for current_cell_id in fit_table.loc[:,"Cell_id"]:
-        current_fit_value=fit_table[fit_table['Cell_id']==str(current_cell_id)].fit.values[0]
-        
-        current_f_I_table=extract_stim_freq(float(current_cell_id), species_sweep_stim_table,per_time=per_time,first_x_ms=first_x_ms,per_nth_spike=per_nth_spike,first_nth_spike=first_nth_spike)
-        coarse_f_I_table=current_f_I_table[current_f_I_table['stimulus_description']=='COARSE']
-        
-        x_data=coarse_f_I_table.loc[:,'Stim_amp_pA']
-        new_x_data=pd.Series(np.arange(min(x_data),max(x_data),0.1))
-        if current_fit_value == 'TypeI':
-            
-            single_amplitude_value=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_single_amplitude.values[0]
-            single_center_value=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_single_center.values[0]
-            single_sigma_value=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_single_sigma.values[0]
-            single_sigmoid_y_data=pd.Series(sigmoid_function(new_x_data,single_amplitude_value,single_center_value,single_sigma_value))
-                                                                                   
-            
-            twentyfive_index=next(x for x, val in enumerate(single_sigmoid_y_data) if val >(0.25*max(single_sigmoid_y_data)))
-            seventyfive_index=next(x for x, val in enumerate(single_sigmoid_y_data) if val >(0.75*max(single_sigmoid_y_data)))
-            #fit linear line to linear sigmoid portion
-            Gain,Intercept=fit_specimen_fi_slope(new_x_data.iloc[twentyfive_index:seventyfive_index],sigmoid_function(new_x_data.iloc[twentyfive_index:seventyfive_index],single_amplitude_value,single_center_value,single_sigma_value))
-            Threshold=(0-Intercept)/Gain
-            extended_f_I_table=pd.DataFrame(np.column_stack((new_x_data,single_sigmoid_y_data)),columns=["Stim_amp_pA","Frequency_Hz"])
-            my_derivative=np.array(derivative(sigmoid_function,new_x_data,dx=1e-1,args=(single_amplitude_value,single_center_value,single_sigma_value)))
-            end_slope=np.mean(my_derivative[-10:])
-            Saturation=np.nan
-            if end_slope <=0.001:
-                Saturation=np.mean(single_sigmoid_y_data[-10:])
-                
-            if do_plot==True:
-                
-                myplot=ggplot(coarse_f_I_table,aes(x=coarse_f_I_table["Stim_amp_pA"],y=coarse_f_I_table["Frequency_Hz"]))+geom_point()
-                myplot+=geom_line(extended_f_I_table,aes(x=extended_f_I_table["Stim_amp_pA"],y=extended_f_I_table["Frequency_Hz"]),color='blue')
-                myplot+=geom_abline(aes(intercept=Intercept,slope=Gain))
-                Threshold_table=pd.DataFrame({'Stim_amp_pA':[Threshold],'Frequency_Hz':[0]})
-                myplot+=geom_point(Threshold_table,aes(x=Threshold_table["Stim_amp_pA"],y=Threshold_table["Frequency_Hz"]),color='green')
-                if Saturation!=np.nan:
-                    myplot+=geom_abline(aes(intercept=Saturation,slope=0))
-                
-                
-                
-        elif current_fit_value == 'TypeII':
-            compo_step_amplitude=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_step_amplitude.values[0]
-            compo_step_center=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_step_center.values[0]
-            compo_sigmoid_amplitude=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_sigmoid_amplitude.values[0]
-            compo_sigmoid_center=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_sigmoid_center.values[0]
-            compo_sigmoid_sigma=fit_table[fit_table['Cell_id']==str(current_cell_id)].best_sigmoid_sigma.values[0]
-            new_y_data=pd.Series(compo(new_x_data,compo_step_center,compo_step_amplitude,compo_sigmoid_amplitude,compo_sigmoid_center,compo_sigmoid_sigma))
-         
-            extended_f_I_table=pd.DataFrame(np.column_stack((new_x_data,new_y_data)),columns=["Stim_amp_pA","Frequency_Hz"])
-           
-            second_derivative=new_y_data.diff().diff()
-            linear_portion_start_index=next(x for x, val in enumerate(second_derivative) if val <0)
-            linear_portion_start_index+=1
-            linear_portion_y_data=new_y_data.iloc[linear_portion_start_index:]
-            linear_portion_x_data=new_x_data.iloc[linear_portion_start_index:]
-            
-            twentyfive_index=next(x for x, val in enumerate(linear_portion_y_data) if val >((min(linear_portion_y_data)+0.25*(max(linear_portion_y_data)-min(linear_portion_y_data)))))
-            seventyfive_index=next(x for x, val in enumerate(linear_portion_y_data) if val >((min(linear_portion_y_data)+0.75*(max(linear_portion_y_data)-min(linear_portion_y_data)))))
-            
-            Gain,Intercept=fit_specimen_fi_slope(linear_portion_x_data.iloc[twentyfive_index:seventyfive_index],linear_portion_y_data.iloc[twentyfive_index:seventyfive_index])
-            first_derivative=new_y_data.diff()
-            Threshold=compo_step_center
-            Saturation=np.nan
-            if np.mean(first_derivative[-100:]) <=0.001:
-                Saturation=np.mean(first_derivative[-100:])
-            
-            
-        else:
-            Gain,Threshold,Saturation=np.nan,np.nan,np.nan
-            
-        if do_plot==True and current_fit_value=='TypeI' or do_plot==True and current_fit_value=='TypeII':
-            
-            myplot=ggplot(coarse_f_I_table,aes(x=coarse_f_I_table["Stim_amp_pA"],y=coarse_f_I_table["Frequency_Hz"]))+geom_point()
-            myplot+=geom_line(extended_f_I_table,aes(x=extended_f_I_table["Stim_amp_pA"],y=extended_f_I_table["Frequency_Hz"]),color='blue')
-            myplot+=geom_abline(aes(intercept=Intercept,slope=Gain))
-            Threshold_table=pd.DataFrame({'Stim_amp_pA':[Threshold],'Frequency_Hz':[0]})
-            myplot+=geom_point(Threshold_table,aes(x=Threshold_table["Stim_amp_pA"],y=Threshold_table["Frequency_Hz"]),color='green')
-            if Saturation!=np.nan:
-                myplot+=geom_abline(aes(intercept=Saturation,slope=0))
-            myplot+=xlab(str("Stim_amp_pA_id: "+str(current_cell_id)))
-            print(myplot)
-        new_line=pd.Series([str(current_cell_id),current_fit_value,Gain,Threshold,Saturation],
-                       index=mycol)
-        f_I_params_table=f_I_params_table.append(new_line,ignore_index=True)
-        
-        
-    return(f_I_params_table)
-        
-def composite_function(x,sigmoid_amplitude,sigmoid_center,sigmoid_sigma,step_amplitude,step_center,step_sigma):
-    y=(sigmoid_amplitude*(1-(1/(1+np.exp((x-sigmoid_center)/sigmoid_sigma)))))*(step_amplitude*(1-(1/(1+np.exp((x-step_center)/step_sigma)))))
-    return y
 
 def sigmoid_function(x,amplitude,center,sigma):
      y=amplitude*(1-(1/(1+np.exp((x-center)/sigma))))
@@ -2836,12 +2053,6 @@ def sigmoid_heaviside_to_minimize(params,x_data,data):
     model=(sigmoid_amplitude*(1-(1/(1+np.exp((x_data-sigmoid_center)/sigmoid_sigma)))))*heaviside
     return model
 
-def relative_squared_error(true, pred):
-    true_mean = np.mean(true)
-    squared_error_num = np.sum(np.square(true - pred))
-    squared_error_den = np.sum(np.square(true - true_mean))
-    rse_loss = squared_error_num / squared_error_den
-    return rse_loss
 
 def normalized_root_mean_squared_error(true, pred,pred_extended):
     #Normalization by the interquartile range
@@ -2854,12 +2065,7 @@ def normalized_root_mean_squared_error(true, pred,pred_extended):
     nrmse_loss = rmse/(Q3-Q1)
     return nrmse_loss
 
-def relative_root_mean_squared_error(true, pred):
-    num = np.sum(np.square(true - pred))
-    den = np.sum(np.square(pred))
-    squared_error = num/den
-    rrmse_loss = np.sqrt(squared_error)
-    return rrmse_loss
+
 
 def coarse_or_fine_sweep(cell_id):
     all_sweeps_table=pd.DataFrame(ctc.get_ephys_sweeps(cell_id))
@@ -2891,6 +2097,22 @@ def take_until_number(string):
 # print uppercase characters
     return(upper)
 
+def compute_step_array(cell_id,species_sweep_stim_table,per_time=False,first_x_ms=0,per_nth_spike=False,first_nth_spike=0):
+    F_I_table=extract_stim_freq(cell_id,mouse_sweep_stim_table,per_time=per_time,first_x_ms=first_x_ms)
+    F_I_table=F_I_table[F_I_table["stimulus_description"]=="COARSE"]
+    first_non_zero=0
+    found_first_non_zero=False
+    for elt in range(F_I_table.shape[0]):
+        if F_I_table.iloc[elt,3] !=0 and found_first_non_zero==False:
+            first_non_zero=elt
+            found_first_non_zero=True
+    F_I_table_second=F_I_table.iloc[first_non_zero:,:]
+    
+    step_array=abs(F_I_table_second.iloc[1:,3].values-F_I_table_second.iloc[:-1,3].values)
+
+    return(step_array,F_I_table,F_I_table_second)
+    
+
 #%%
 start_time=time.time()
 total_time=0
@@ -2915,7 +2137,7 @@ for cell_id in mylist:
     print('Remaining time: ',remaining_hours,'h ',remaining_minutes,'min ',round(remaining_seconds,0),"s")
 
 print("Total time= ",total_time)
-f_I_table=compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=1000,per_nth_spike=False,first_nth_spike=0,do_plot=False)
+f_I_table=heaviside_compute_f_I_params(new_fit_table,mouse_sweep_stim_table,per_time=True,first_x_ms=1000,per_nth_spike=False,first_nth_spike=0,do_plot=False)
 #%%
 #plt.hist(new_fit_table['bestNRMSE'],bins=600)
 plt.scatter(new_fit_table['bestNRMSE'],new_fit_table['best_sigmoid_sigma'],alpha=0.05)
@@ -3029,3 +2251,8 @@ def lyle_table_to_fit(inst_freq_table):
    # interval_freq_table['specimen']=pd.Categorical(interval_freq_table['specimen'])
 
     return interval_freq_table
+#%%
+
+    
+    
+    
